@@ -16,7 +16,7 @@ export function ViewToggle() {
 
   return (
     <div
-      className="flex items-center gap-0.5 rounded-md border border-border bg-card p-0.5"
+      className="flex items-center gap-0.5 rounded-full border border-border bg-card p-0.5"
       role="group"
       aria-label="Switch view"
     >
@@ -28,7 +28,7 @@ export function ViewToggle() {
           aria-pressed={view === key}
           onClick={() => setView(key)}
           className={cn(
-            "inline-flex size-7 items-center justify-center rounded-sm transition-colors",
+            "inline-flex size-7 items-center justify-center rounded-full transition-colors",
             view === key
               ? "bg-primary text-primary-foreground"
               : "text-muted-foreground hover:text-foreground"

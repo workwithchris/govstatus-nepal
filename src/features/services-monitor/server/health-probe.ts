@@ -17,16 +17,30 @@ const PROBE_TIMEOUT_MS = 8000;
 const SLOW_THRESHOLD_MS = 3500;
 const HISTORY_SLOTS = 24;
 const HOUR_MS = 60 * 60 * 1000;
-const CACHE_TTL_MS = 60 * 1000;
-const USER_AGENT = "GovStatusNepal-HealthBot/1.0 (+https://govstatus.np)";
+const USER_AGENT =
+  "GovStatusNepal-HealthBot/1.0 (+https://govstatusnepal.techyatraa.com)";
 
 /**
  * Node/undici strictly validates certificate chains; browsers additionally
  * chase AIA intermediates and tolerate chain gaps, so several .np gov portals
  * that load fine in a browser get rejected here. Retry once with relaxed TLS
- * so certificate quirks don't read as outages.
+ * so certificate quirks don't read as outages. Cloudflare Workers (via
+ * OpenNext / nodejs_compat) can't disable cert validation, so that path just
+ * skips the retry.
  */
-const relaxedTlsAgent = new Agent({ connect: { rejectUnauthorized: false } });
+const IS_NODE =
+  typeof process !== "undefined" && process.release?.name === "node";
+
+let relaxedTlsAgent: Agent | null = null;
+function getRelaxedTlsAgent(): Agent | null {
+  if (!IS_NODE || relaxedTlsAgent) return relaxedTlsAgent;
+  try {
+    relaxedTlsAgent = new Agent({ connect: { rejectUnauthorized: false } });
+  } catch {
+    relaxedTlsAgent = null;
+  }
+  return relaxedTlsAgent;
+}
 
 function probeRequest(url: string, signal: AbortSignal, dispatcher?: Agent) {
   return undiciFetch(url, {
@@ -63,7 +77,9 @@ async function probeService(url: string): Promise<ProbeResult> {
       res = await probeRequest(url, controller.signal);
     } catch (err) {
       if (controller.signal.aborted) throw err;
-      res = await probeRequest(url, controller.signal, relaxedTlsAgent);
+      const relaxed = getRelaxedTlsAgent();
+      if (!relaxed) throw err;
+      res = await probeRequest(url, controller.signal, relaxed);
     }
     const responseTime = Math.round(performance.now() - startedAt);
 
@@ -152,29 +168,35 @@ async function persistChecks(
   checkedAtMs: number,
   checkedAt: string
 ): Promise<void> {
-  const values = services
-    .map(() => "(?, ?, ?, ?, ?, ?)")
-    .join(", ");
-  const params = services.flatMap((service) => [
-    service.id,
-    service.status,
-    service.responseTime,
-    service.httpStatus,
-    checkedAtMs,
-    checkedAt,
-  ]);
+  // SQLite caps bind variables per statement (~100 on D1), so chunk the
+  // multi-row INSERT and send all statements in one atomic batch.
+  const CHUNK_SIZE = 15; // rows per statement (6 params each)
+  const statements: { sql: string; params: unknown[] }[] = [];
 
-  await d1Batch([
-    {
+  for (let i = 0; i < services.length; i += CHUNK_SIZE) {
+    const chunk = services.slice(i, i + CHUNK_SIZE);
+    const values = chunk.map(() => "(?, ?, ?, ?, ?, ?)").join(", ");
+    const params = chunk.flatMap((service) => [
+      service.id,
+      service.status,
+      service.responseTime,
+      service.httpStatus,
+      checkedAtMs,
+      checkedAt,
+    ]);
+    statements.push({
       sql: `INSERT INTO status_checks (service_id, status, response_time, http_status, checked_at_ms, checked_at) VALUES ${values}`,
       params,
-    },
+    });
+  }
+
+  statements.push({
     // Retention: keep one week of history.
-    {
-      sql: "DELETE FROM status_checks WHERE checked_at_ms < ?",
-      params: [checkedAtMs - 7 * 24 * HOUR_MS],
-    },
-  ]);
+    sql: "DELETE FROM status_checks WHERE checked_at_ms < ?",
+    params: [checkedAtMs - 7 * 24 * HOUR_MS],
+  });
+
+  await d1Batch(statements);
 }
 
 function buildHistory(
@@ -214,6 +236,39 @@ function buildHistory(
   return slots;
 }
 
+function computeUptimePercentage(uptime24h: UptimeSlot[]): number {
+  const knownSlots = uptime24h.filter((slot) => slot.status !== null).length;
+  const operationalSlots = uptime24h.filter(
+    (slot) => slot.status === "operational"
+  ).length;
+  return knownSlots > 0
+    ? Math.round((operationalSlots / knownSlots) * 1000) / 10
+    : 100;
+}
+
+const STATUS_CHAR: Record<HealthStatus, string> = {
+  operational: "o",
+  degraded: "d",
+  down: "x",
+};
+
+/**
+ * Compact history codec: 24 status chars (o/d/x, n = no data) plus one
+ * nullable latency per slot. Replaces the verbose per-slot objects so the
+ * API payload stays small at scale.
+ */
+function encodeHistory(uptime24h: UptimeSlot[]): {
+  history: string;
+  latencies: (number | null)[];
+} {
+  return {
+    history: uptime24h
+      .map((slot) => (slot.status ? STATUS_CHAR[slot.status] : "n"))
+      .join(""),
+    latencies: uptime24h.map((slot) => slot.responseTime),
+  };
+}
+
 async function checkService(
   service: SeedService,
   checkedAt: string,
@@ -221,12 +276,6 @@ async function checkService(
 ): Promise<ServiceHealth> {
   const live = await probeService(service.url);
   const uptime24h = buildHistory(service, live, checkedAt, realHistory);
-  const knownSlots = uptime24h.filter(
-    (slot) => slot.status !== null
-  ).length;
-  const operationalSlots = uptime24h.filter(
-    (slot) => slot.status === "operational"
-  ).length;
 
   return {
     ...service,
@@ -234,12 +283,41 @@ async function checkService(
     responseTime: live.responseTime,
     httpStatus: live.httpStatus,
     checkedAt,
-    uptimePercentage:
-      knownSlots > 0
-        ? Math.round((operationalSlots / knownSlots) * 1000) / 10
-        : 100,
-    uptime24h,
+    uptimePercentage: computeUptimePercentage(uptime24h),
+    ...encodeHistory(uptime24h),
   };
+}
+
+function buildHealthResponse(
+  services: ServiceHealth[],
+  checkedAt: string
+): HealthResponse {
+  const count = (status: HealthStatus) =>
+    services.filter((service) => service.status === status).length;
+
+  const responseTimes = services
+    .map((service) => service.responseTime)
+    .filter((time): time is number => time !== null);
+
+  return healthResponseSchema.parse({
+    checkedAt,
+    summary: {
+      total: services.length,
+      operational: count("operational"),
+      degraded: count("degraded"),
+      down: count("down"),
+      averageResponseTime:
+        responseTimes.length > 0
+          ? Math.round(
+              responseTimes.reduce((sum, time) => sum + time, 0) /
+                responseTimes.length
+            )
+          : null,
+      overallStatus:
+        count("down") > 0 ? "outage" : count("degraded") > 0 ? "degraded" : "normal",
+    },
+    services,
+  });
 }
 
 /**
@@ -318,38 +396,64 @@ async function runChecks(): Promise<HealthResponse> {
     finishedAt: new Date().toISOString(),
   };
 
-  const count = (status: HealthStatus) =>
-    services.filter((service) => service.status === status).length;
-
-  const responseTimes = services
-    .map((service) => service.responseTime)
-    .filter((time): time is number => time !== null);
-
-  return healthResponseSchema.parse({
-    checkedAt,
-    summary: {
-      total: services.length,
-      operational: count("operational"),
-      degraded: count("degraded"),
-      down: count("down"),
-      averageResponseTime:
-        responseTimes.length > 0
-          ? Math.round(
-              responseTimes.reduce((sum, time) => sum + time, 0) /
-                responseTimes.length
-            )
-          : null,
-      overallStatus:
-        count("down") > 0 ? "outage" : count("degraded") > 0 ? "degraded" : "normal",
-    },
-    services,
-  });
+  return buildHealthResponse(services, checkedAt);
 }
 
-export function getServicesHealth(): Promise<HealthResponse> {
-  if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
-    return Promise.resolve(cached.data);
+/**
+ * Fast path: build a snapshot of the last-known state straight from the D1
+ * history (no network probes). Returns null when the database is unconfigured
+ * or doesn't yet hold a full 24h record for every service.
+ */
+async function getLastKnownFromDb(): Promise<HealthResponse | null> {
+  if (!d1Config) return null;
+  const seeds = seedServiceSchema.array().parse(seedData);
+  const now = Date.now();
+  const checkedAt = new Date(now).toISOString();
+
+  try {
+    const history = await loadHistory(now - 24 * HOUR_MS);
+    const services: ServiceHealth[] = [];
+
+    for (const seed of seeds) {
+      const byHour = history.get(seed.id);
+      if (!byHour) return null;
+      const latest = [...byHour.values()].reduce((a, b) =>
+        a.last_ms > b.last_ms ? a : b
+      );
+      const uptime24h = buildHistory(
+        seed,
+        {
+          status: latest.status,
+          responseTime: latest.response_time,
+          httpStatus: null,
+        },
+        checkedAt,
+        byHour
+      );
+      services.push({
+        ...seed,
+        status: latest.status,
+        responseTime: latest.response_time,
+        httpStatus: null,
+        checkedAt: new Date(latest.last_ms).toISOString(),
+        uptimePercentage: computeUptimePercentage(uptime24h),
+        ...encodeHistory(uptime24h),
+      });
+    }
+
+    return buildHealthResponse(services, checkedAt);
+  } catch (err) {
+    console.error("[govstatus] D1 snapshot failed:", err);
+    return null;
   }
+}
+
+/**
+ * Runs a full probe cycle and publishes the result to the module cache + D1.
+ * Called only by the cron job (/api/probe). The in-flight promise is shared
+ * so overlapping cron ticks never run two cycles at once.
+ */
+export function probeNow(): Promise<HealthResponse> {
   inFlight ??= runChecks()
     .then((data) => {
       cached = { data, at: Date.now() };
@@ -359,4 +463,21 @@ export function getServicesHealth(): Promise<HealthResponse> {
       inFlight = null;
     });
   return inFlight;
+}
+
+/**
+ * Read-only entry point. Serves the last published probe cycle from the
+ * module cache, or the last-known D1 snapshot on a cold start. Never probes —
+ * refreshing is owned by the cron job. The blocking fallback fires only when
+ * the database is genuinely empty (first run before any cron tick).
+ */
+export function getServicesHealth(): Promise<HealthResponse> {
+  if (cached) return Promise.resolve(cached.data);
+  return getLastKnownFromDb().then((snapshot) => {
+    if (snapshot) {
+      cached = { data: snapshot, at: Date.now() };
+      return snapshot;
+    }
+    return probeNow();
+  });
 }

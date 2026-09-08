@@ -38,9 +38,12 @@ export const STATUS_META: Record<HealthStatus, StatusMeta> = {
 
 export const CATEGORY_LABELS: Record<string, string> = {
   citizen: "Citizen",
+  education: "Education",
   finance: "Finance",
   business: "Business",
   ministry: "Ministry",
+  province: "Province",
   palika: "Palika",
   core: "Core",
+  infrastructure: "Infrastructure",
 };

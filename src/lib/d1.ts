@@ -83,7 +83,7 @@ export async function d1Batch(statements: { sql: string; params: unknown[] }[]):
         Authorization: `Bearer ${d1Config.apiToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(statements),
+      body: JSON.stringify({ batch: statements }),
       cache: "no-store",
     }
   );

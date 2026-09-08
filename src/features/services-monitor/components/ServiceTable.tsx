@@ -9,6 +9,7 @@ import { ProbeLoader } from "@/features/services-monitor/components/ProbeLoader"
 import { ServiceLogo } from "@/features/services-monitor/components/ServiceLogo";
 import { UptimeBar } from "@/features/services-monitor/components/UptimeBar";
 import { useFilteredServices } from "@/features/services-monitor/api/useFilteredServices";
+import { useDetailStore } from "@/features/services-monitor/store/useDetailStore";
 import { useFilterStore } from "@/features/services-monitor/store/useFilterStore";
 import type { SortBy } from "@/features/services-monitor/types";
 import { cn, formatLatency } from "@/lib/utils";
@@ -47,6 +48,7 @@ function SortHeader({ column }: { column: SortBy }) {
 export function ServiceTable() {
   const { services, isLoading } = useFilteredServices();
   const sortBy = useFilterStore((s) => s.sortBy);
+  const setSelectedServiceId = useDetailStore((s) => s.setSelectedServiceId);
 
   if (isLoading) {
     return <ProbeLoader variant="compact" />;
@@ -83,7 +85,19 @@ export function ServiceTable() {
           {services.map((service) => {
             const meta = STATUS_META[service.status];
             return (
-              <tr key={service.id} className="transition-colors hover:bg-accent/50">
+              <tr
+                key={service.id}
+                onClick={() => setSelectedServiceId(service.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelectedServiceId(service.id);
+                  }
+                }}
+                tabIndex={0}
+                aria-label={`Show details for ${service.name}`}
+                className="cursor-pointer transition-colors hover:bg-accent/50 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+              >
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <ServiceLogo url={service.url} name={service.name} />
@@ -117,8 +131,7 @@ export function ServiceTable() {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <UptimeBar
-                      slots={service.uptime24h}
-                      label={service.name}
+                      service={service}
                       className="h-4 w-36"
                     />
                     <span className="font-mono text-xs text-muted-foreground">
@@ -132,6 +145,7 @@ export function ServiceTable() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`Open ${service.name} in a new tab`}
+                    onClick={(e) => e.stopPropagation()}
                     className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   >
                     <ExternalLink className="size-4" />

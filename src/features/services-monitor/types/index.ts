@@ -7,11 +7,14 @@ export type HealthStatus = z.infer<typeof healthStatusSchema>;
 
 export const serviceCategorySchema = z.enum([
   "citizen",
+  "education",
   "finance",
   "business",
   "ministry",
+  "province",
   "palika",
   "core",
+  "infrastructure",
 ]);
 export type ServiceCategory = z.infer<typeof serviceCategorySchema>;
 
@@ -52,7 +55,10 @@ export const serviceHealthSchema = seedServiceSchema.extend({
   httpStatus: z.number().nullable(),
   checkedAt: z.string(),
   uptimePercentage: z.number().min(0).max(100),
-  uptime24h: z.array(uptimeSlotSchema).length(24),
+  /** Compact 24-hour history: one char per slot (o/d/x, n = no data). */
+  history: z.string().length(24),
+  /** One latency (ms) per history slot, aligned by index. */
+  latencies: z.array(z.number().nullable()).length(24),
 });
 export type ServiceHealth = z.infer<typeof serviceHealthSchema>;
 

@@ -264,5 +264,383 @@
     "url": "https://opcr.nepalpolice.gov.np",
     "category": "citizen",
     "description": "Online police clearance certificate applications and verification"
+  },
+  {
+    "id": "president",
+    "name": "Office of the President",
+    "url": "https://president.gov.np",
+    "category": "core",
+    "description": "Presidential office, ordinances, and constitutional messages"
+  },
+  {
+    "id": "parliament",
+    "name": "Federal Parliament of Nepal",
+    "url": "https://parliament.gov.np",
+    "category": "core",
+    "description": "Federal legislature portal, bills, and parliamentary proceedings"
+  },
+  {
+    "id": "hr-parliament",
+    "name": "House of Representatives",
+    "url": "https://hr.parliament.gov.np",
+    "category": "core",
+    "description": "Lower house agenda, committees, and live sittings"
+  },
+  {
+    "id": "na-parliament",
+    "name": "National Assembly",
+    "url": "https://na.parliament.gov.np",
+    "category": "core",
+    "description": "Upper house sessions, committees, and legislative records"
+  },
+  {
+    "id": "oag",
+    "name": "Office of the Auditor General",
+    "url": "https://oag.gov.np",
+    "category": "core",
+    "description": "Audit reports, financial accountability, and annual audits"
+  },
+  {
+    "id": "ag",
+    "name": "Office of the Attorney General",
+    "url": "https://ag.gov.np",
+    "category": "core",
+    "description": "Government legal counsel, litigation, and legal opinions"
+  },
+  {
+    "id": "nhrc",
+    "name": "National Human Rights Commission",
+    "url": "https://nhrcnepal.org",
+    "category": "core",
+    "description": "Human rights monitoring, complaints, and recommendations"
+  },
+  {
+    "id": "tsc",
+    "name": "Teacher Service Commission",
+    "url": "https://tsc.gov.np",
+    "category": "citizen",
+    "description": "Teacher recruitment exams, result publication, and permits"
+  },
+  {
+    "id": "mopit",
+    "name": "Ministry of Physical Infrastructure & Transport",
+    "url": "https://mopit.gov.np",
+    "category": "ministry",
+    "description": "Transport, road, railway, and infrastructure policy"
+  },
+  {
+    "id": "moewri",
+    "name": "Ministry of Energy, Water Resources & Irrigation",
+    "url": "https://moewri.gov.np",
+    "category": "ministry",
+    "description": "Energy, hydropower, water resource, and irrigation policies"
+  },
+  {
+    "id": "moest",
+    "name": "Ministry of Education, Science & Technology",
+    "url": "https://moest.gov.np",
+    "category": "ministry",
+    "description": "Education policy, curricula, and scholarship programs"
+  },
+  {
+    "id": "mofaga",
+    "name": "Ministry of Federal Affairs & General Administration",
+    "url": "https://mofaga.gov.np",
+    "category": "ministry",
+    "description": "Provincial-local coordination and civil administration"
+  },
+  {
+    "id": "moics",
+    "name": "Ministry of Industry, Commerce & Supplies",
+    "url": "https://moics.gov.np",
+    "category": "ministry",
+    "description": "Industrial policy, trade facilitation, and supply management"
+  },
+  {
+    "id": "moljpa",
+    "name": "Ministry of Law, Justice & Parliamentary Affairs",
+    "url": "https://moljpa.gov.np",
+    "category": "ministry",
+    "description": "Legislation, judicial administration, and legal reform"
+  },
+  {
+    "id": "mofe",
+    "name": "Ministry of Forests & Environment",
+    "url": "https://mofe.gov.np",
+    "category": "ministry",
+    "description": "Forests, climate change, and environmental protection"
+  },
+  {
+    "id": "moless",
+    "name": "Ministry of Labour, Employment & Social Security",
+    "url": "https://moless.gov.np",
+    "category": "ministry",
+    "description": "Labour policy, employment services, and social security"
+  },
+  {
+    "id": "moctca",
+    "name": "Ministry of Culture, Tourism & Civil Aviation",
+    "url": "https://tourism.gov.np",
+    "category": "ministry",
+    "description": "Tourism promotion, culture, and civil aviation policy"
+  },
+  {
+    "id": "moud",
+    "name": "Ministry of Urban Development",
+    "url": "https://moud.gov.np",
+    "category": "ministry",
+    "description": "Urban planning, housing, and building standards"
+  },
+  {
+    "id": "mows",
+    "name": "Ministry of Water Supply",
+    "url": "https://mows.gov.np",
+    "category": "ministry",
+    "description": "Drinking water and sanitation policies and programs"
+  },
+  {
+    "id": "mod",
+    "name": "Ministry of Defence",
+    "url": "https://mod.gov.np",
+    "category": "ministry",
+    "description": "National defence, Nepal Army oversight, and security policy"
+  },
+  {
+    "id": "mowcsc",
+    "name": "Ministry of Women, Children & Senior Citizens",
+    "url": "https://mowcsc.gov.np",
+    "category": "ministry",
+    "description": "Gender equality, child welfare, and senior citizen programs"
+  },
+  {
+    "id": "moys",
+    "name": "Ministry of Youth & Sports",
+    "url": "https://moys.gov.np",
+    "category": "ministry",
+    "description": "Youth empowerment and sports development programs"
+  },
+  {
+    "id": "molcpa",
+    "name": "Ministry of Land Management, Cooperatives & Poverty Alleviation",
+    "url": "https://molcpa.gov.np",
+    "category": "ministry",
+    "description": "Land administration, cooperatives, and poverty programs"
+  },
+  {
+    "id": "ird-main",
+    "name": "Inland Revenue Department (IRD)",
+    "url": "https://ird.gov.np",
+    "category": "finance",
+    "description": "Tax policies, notices, and revenue administration"
+  },
+  {
+    "id": "fcgo",
+    "name": "Financial Comptroller General Office (FCGO)",
+    "url": "https://fcgo.gov.np",
+    "category": "finance",
+    "description": "Government accounting, budget disbursement, and financial reporting"
+  },
+  {
+    "id": "dri",
+    "name": "Department of Revenue Investigation (DRI)",
+    "url": "https://dri.gov.np",
+    "category": "finance",
+    "description": "Smuggling and revenue evasion investigation"
+  },
+  {
+    "id": "doc",
+    "name": "Department of Commerce, Supplies & Consumer Protection",
+    "url": "https://doc.gov.np",
+    "category": "business",
+    "description": "Trade facilitation, supply monitoring, and consumer protection"
+  },
+  {
+    "id": "doind",
+    "name": "Department of Industry",
+    "url": "https://doind.gov.np",
+    "category": "business",
+    "description": "Industrial registration, incentives, and investment facilitation"
+  },
+  {
+    "id": "cit",
+    "name": "Citizen Investment Trust (CIT)",
+    "url": "https://nlk.org.np",
+    "category": "finance",
+    "description": "Retirement savings, mutual funds, and unit scheme investments"
+  },
+  {
+    "id": "dhm",
+    "name": "Department of Hydrology & Meteorology",
+    "url": "https://dhm.gov.np",
+    "category": "infrastructure",
+    "description": "Weather forecasts, flood warnings, and climate data"
+  },
+  {
+    "id": "dhm-telemetry",
+    "name": "Real-Time River Telemetry",
+    "url": "https://telemetry.dhm.gov.np",
+    "category": "infrastructure",
+    "description": "Live river level and discharge monitoring stations"
+  },
+  {
+    "id": "bipad",
+    "name": "BIPAD Disaster Portal",
+    "url": "https://bipadportal.gov.np",
+    "category": "infrastructure",
+    "description": "National disaster risk information and incident reporting"
+  },
+  {
+    "id": "nea",
+    "name": "Nepal Electricity Authority (NEA)",
+    "url": "https://nea.org.np",
+    "category": "infrastructure",
+    "description": "Electricity bills, load shedding schedules, and power supply"
+  },
+  {
+    "id": "dor",
+    "name": "Department of Roads (DoR)",
+    "url": "https://dor.gov.np",
+    "category": "infrastructure",
+    "description": "Road construction, maintenance, and traffic information"
+  },
+  {
+    "id": "railways",
+    "name": "Department of Railways",
+    "url": "https://railway.gov.np",
+    "category": "infrastructure",
+    "description": "Railway projects and rail transport policy"
+  },
+  {
+    "id": "nta",
+    "name": "Nepal Telecommunications Authority (NTA)",
+    "url": "https://nta.gov.np",
+    "category": "infrastructure",
+    "description": "Telecom regulation, licensing, and consumer complaints"
+  },
+  {
+    "id": "nitc",
+    "name": "National Information Technology Center (NITC)",
+    "url": "https://nitc.gov.np",
+    "category": "infrastructure",
+    "description": "Government data hosting, network, and e-governance infrastructure"
+  },
+  {
+    "id": "survey-dos",
+    "name": "Survey Department (Napi Bibhag)",
+    "url": "https://dos.gov.np",
+    "category": "infrastructure",
+    "description": "Topographic maps, geodetic surveys, and land surveying"
+  },
+  {
+    "id": "dmgnepal",
+    "name": "Department of Mines & Geology",
+    "url": "https://dmgnepal.gov.np",
+    "category": "infrastructure",
+    "description": "Mineral exploration, geo-hazard studies, and mining regulation"
+  },
+  {
+    "id": "rajpatra",
+    "name": "Nepal Printing Office (Rajpatra)",
+    "url": "https://rajpatra.dop.gov.np",
+    "category": "infrastructure",
+    "description": "Nepal Gazette publication and official legal notices"
+  },
+  {
+    "id": "tu",
+    "name": "Tribhuvan University (TU)",
+    "url": "https://tu.edu.np",
+    "category": "education",
+    "description": "Largest national university, admissions, and academic programs"
+  },
+  {
+    "id": "tu-exam",
+    "name": "TU Examination Controller (OCE)",
+    "url": "https://tuexam.edu.np",
+    "category": "education",
+    "description": "TU exam forms, results, and admit card services"
+  },
+  {
+    "id": "ugc",
+    "name": "University Grants Commission (UGC)",
+    "url": "https://ugcnepal.edu.np",
+    "category": "education",
+    "description": "University quality assurance, grants, and scholarships"
+  },
+  {
+    "id": "ctevt",
+    "name": "Council for Technical Education & Vocational Training (CTEVT)",
+    "url": "https://ctevt.org.np",
+    "category": "education",
+    "description": "Technical and vocational education, diplomas, and skill training"
+  },
+  {
+    "id": "koshi-province",
+    "name": "Koshi Province (Chief Minister's Office)",
+    "url": "https://ocmcm.koshi.gov.np",
+    "category": "province",
+    "description": "Koshi provincial government, policies, and services"
+  },
+  {
+    "id": "madhesh-province",
+    "name": "Madhesh Province (Chief Minister's Office)",
+    "url": "https://ocmcm.madhesh.gov.np",
+    "category": "province",
+    "description": "Madhesh provincial government, policies, and services"
+  },
+  {
+    "id": "bagmati-province",
+    "name": "Bagmati Province (Chief Minister's Office)",
+    "url": "https://ocmcm.bagmati.gov.np",
+    "category": "province",
+    "description": "Bagmati provincial government, policies, and services"
+  },
+  {
+    "id": "gandaki-province",
+    "name": "Gandaki Province (Chief Minister's Office)",
+    "url": "https://ocmcm.gandaki.gov.np",
+    "category": "province",
+    "description": "Gandaki provincial government, policies, and services"
+  },
+  {
+    "id": "lumbini-province",
+    "name": "Lumbini Province (Chief Minister's Office)",
+    "url": "https://ocmcm.lumbini.gov.np",
+    "category": "province",
+    "description": "Lumbini provincial government, policies, and services"
+  },
+  {
+    "id": "karnali-province",
+    "name": "Karnali Province (Chief Minister's Office)",
+    "url": "https://ocmcm.karnali.gov.np",
+    "category": "province",
+    "description": "Karnali provincial government, policies, and services"
+  },
+  {
+    "id": "sudurpashchim-province",
+    "name": "Sudurpashchim Province (Chief Minister's Office)",
+    "url": "https://ocmcm.sudurpashchim.gov.np",
+    "category": "province",
+    "description": "Sudurpashchim provincial government, policies, and services"
+  },
+  {
+    "id": "pokhara",
+    "name": "Pokhara Metropolitan City",
+    "url": "https://pokharamun.gov.np",
+    "category": "palika",
+    "description": "Pokhara municipal services, revenue payments, and ward notices"
+  },
+  {
+    "id": "bharatpur",
+    "name": "Bharatpur Metropolitan City",
+    "url": "https://bharatpurmun.gov.np",
+    "category": "palika",
+    "description": "Bharatpur municipal services, permits, and local revenue"
+  },
+  {
+    "id": "birgunj",
+    "name": "Birgunj Metropolitan City",
+    "url": "https://birgunjmun.gov.np",
+    "category": "palika",
+    "description": "Birgunj municipal services, taxes, and ward notices"
   }
 ]

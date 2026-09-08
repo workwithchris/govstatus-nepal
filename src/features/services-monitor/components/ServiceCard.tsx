@@ -10,6 +10,7 @@ import {
   STATUS_META,
 } from "@/features/services-monitor/components/status-meta";
 import { ServiceLogo } from "@/features/services-monitor/components/ServiceLogo";
+import { useDetailStore } from "@/features/services-monitor/store/useDetailStore";
 import type { ServiceHealth } from "@/features/services-monitor/types";
 import { cn, formatLatency } from "@/lib/utils";
 
@@ -19,9 +20,23 @@ interface ServiceCardProps {
 
 export function ServiceCard({ service }: ServiceCardProps) {
   const meta = STATUS_META[service.status];
+  const setSelectedServiceId = useDetailStore((s) => s.setSelectedServiceId);
+
+  const select = () => setSelectedServiceId(service.id);
 
   return (
-    <Card className="gap-0 p-0">
+    <Card
+      role="button"
+      tabIndex={0}
+      onClick={select}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          select();
+        }
+      }}
+      className="cursor-pointer gap-0 p-0 transition-shadow hover:shadow-[0_1px_1px_rgba(0,0,0,0.04),0_8px_16px_-4px_rgba(0,0,0,0.08)] focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+    >
       <div className="flex-1 p-6 pb-4">
         <div className="flex items-start gap-3">
           <ServiceLogo url={service.url} name={service.name} />
@@ -42,6 +57,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={`Open ${service.name} in a new tab`}
+                onClick={(e) => e.stopPropagation()}
                 className="inline-flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
                 <ExternalLink className="size-3.5" />
@@ -67,8 +83,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
           </p>
         </div>
         <UptimeBar
-          slots={service.uptime24h}
-          label={service.name}
+          service={service}
           className="h-5"
         />
       </div>

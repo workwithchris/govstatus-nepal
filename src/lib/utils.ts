@@ -1,8 +1,37 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+import type {
+  HealthStatus,
+  UptimeSlot,
+} from "@/features/services-monitor/types";
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+const HOUR_MS = 60 * 60 * 1000;
+
+const CHAR_STATUS: Record<string, HealthStatus | null> = {
+  o: "operational",
+  d: "degraded",
+  x: "down",
+  n: null,
+};
+
+/** Rebuilds the 24 hourly slots from the compact history codec. */
+export function decodeHistory(
+  checkedAt: string,
+  history: string,
+  latencies: (number | null)[]
+): UptimeSlot[] {
+  const bucketStart =
+    Math.floor(Date.parse(checkedAt) / HOUR_MS) * HOUR_MS;
+  return history.split("").map((char, index) => ({
+    timestamp: new Date(bucketStart - (23 - index) * HOUR_MS).toISOString(),
+    status: CHAR_STATUS[char] ?? null,
+    responseTime: latencies[index] ?? null,
+  }));
 }
 
 /** Formats a response-time in milliseconds, e.g. `420 ms`. */

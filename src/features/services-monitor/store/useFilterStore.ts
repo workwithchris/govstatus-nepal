@@ -21,7 +21,7 @@ export const useFilterStore = create<FilterState>((set) => ({
   searchQuery: "",
   selectedCategory: "all",
   sortBy: "status",
-  view: "grid",
+  view: "table",
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   setSelectedCategory: (selectedCategory) => set({ selectedCategory }),
   setSortBy: (sortBy) => set({ sortBy }),

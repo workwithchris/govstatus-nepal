@@ -124,6 +124,43 @@ npm run lint     # ESLint
 Any Node host works (Vercel, Fly, VPS). The D1 REST client needs no native
 bindings, so the same code also ports to Cloudflare Workers via
 [OpenNext](https://opennext.js.org/) without changes to the probe engine.
+The probe engine is runtime-agnostic: the relaxed-TLS retry is Node-only and
+skips itself on Workers.
+
+### Cloudflare Workers (OpenNext)
+
+```bash
+npm install -g opennextjs-cloudflare
+opennextjs-cloudflare build
+npx wrangler deploy --dry-run   # via open-next.output/
+```
+
+Workers notes:
+- Set `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_D1_DATABASE_ID`,
+  `CLOUDFLARE_API_TOKEN`, and `CRON_SECRET` as Worker secrets/vars
+  (`wrangler secret put …` / `wrangler.toml` vars).
+- ISR (`revalidate = 60`) needs a KV binding on Workers (OpenNext cache
+  binding); without it the page regenerates per request but still serves the
+  fast module cache / D1 snapshot.
+- Probes on Workers do a single strict fetch (no relaxed-TLS retry).
+
+### Scheduled probing (Cloudflare Cron)
+
+Probing runs on a schedule, never on the request path — `/api/health` and the
+page only serve the last published result from the module cache or D1. A tiny
+Cloudflare Worker (`cron-worker/`) triggers `/api/probe` every minute:
+
+```bash
+# 1. Point the worker at your app and set the shared secret
+npx wrangler secret put CRON_SECRET -c cron-worker/wrangler.jsonc
+
+# 2. PROBE_URL is preconfigured to https://govstatusnepal.techyatraa.com/api/probe
+
+# 3. Deploy the cron worker
+npx wrangler deploy -c cron-worker/wrangler.jsonc
+```
+
+Local trigger for testing: `npx wrangler dev --test-scheduled -c cron-worker/wrangler.jsonc`.
 
 ## Notes
 

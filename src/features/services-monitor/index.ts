@@ -3,6 +3,7 @@ export { CategoryFilters } from "@/features/services-monitor/components/Category
 export { SearchAndSortBar } from "@/features/services-monitor/components/SearchAndSortBar";
 export { ServiceGrid } from "@/features/services-monitor/components/ServiceGrid";
 export { ServicesView } from "@/features/services-monitor/components/ServicesView";
+export { HomeTabs } from "@/features/services-monitor/components/HomeTabs";
 export { ProbeLoader } from "@/features/services-monitor/components/ProbeLoader";
 export {
   useServicesHealth,

@@ -41,23 +41,24 @@ export function SearchAndSortBar() {
         />
       </div>
 
-      <div className="flex items-center gap-2">
-        <ArrowDownWideNarrow
-          className="size-4 text-muted-foreground"
-          aria-hidden
-        />
+      <div className="flex items-center gap-3">
         <div
-          className="flex items-center gap-1"
+          className="flex items-center gap-0.5 rounded-full border border-border bg-card p-0.5"
           role="group"
           aria-label="Sort services"
         >
+          <ArrowDownWideNarrow
+            className="ml-1.5 mr-0.5 size-4 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
           {SORT_OPTIONS.map((option) => (
             <Button
               key={option.value}
-              variant="outline"
+              variant="ghost"
               size="sm"
               aria-pressed={sortBy === option.value}
               className={cn(
+                "rounded-full px-3",
                 sortBy === option.value
                   ? "bg-primary text-primary-foreground hover:bg-primary/90"
                   : "text-muted-foreground"

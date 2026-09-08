@@ -17,12 +17,15 @@ import {
 
 const FILTER_ORDER: CategoryFilter[] = [
   "all",
+  "core",
   "citizen",
+  "education",
   "finance",
   "business",
   "ministry",
+  "province",
   "palika",
-  "core",
+  "infrastructure",
 ];
 
 export function CategoryFilters() {

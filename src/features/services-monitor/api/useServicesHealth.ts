@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import {
   healthResponseSchema,
@@ -21,7 +21,11 @@ export function useServicesHealth() {
   return useQuery({
     queryKey: SERVICES_HEALTH_QUERY_KEY,
     queryFn: fetchServicesHealth,
-    staleTime: 60 * 1000,
-    refetchInterval: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    // Keep the last-known list on screen during background refetches so the
+    // view never blanks out or flashes a loader while a probe is running.
+    placeholderData: keepPreviousData,
   });
 }
