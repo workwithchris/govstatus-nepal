@@ -831,5 +831,187 @@
     "url": "https://lumbinidevtrust.gov.np",
     "category": "citizen",
     "description": "Preservation and management of the sacred birthplace of Lord Buddha"
+  },
+  {
+    "id": "rbb",
+    "name": "Rastriya Banijya Bank (RBB)",
+    "url": "https://rbb.com.np",
+    "category": "finance",
+    "description": "Largest state-owned commercial bank handling government treasury and civil salaries"
+  },
+  {
+    "id": "nepal-bank",
+    "name": "Nepal Bank Limited (NBL)",
+    "url": "https://nepalbank.com.np",
+    "category": "finance",
+    "description": "First commercial bank in Nepal with state shareholding and national network"
+  },
+  {
+    "id": "adbl",
+    "name": "Agricultural Development Bank (ADBL)",
+    "url": "https://adbl.gov.np",
+    "category": "finance",
+    "description": "Public financial institution financing rural development and farming communities"
+  },
+  {
+    "id": "nepal-re",
+    "name": "Nepal Reinsurance Company",
+    "url": "https://nepalre.com.np",
+    "category": "finance",
+    "description": "State-backed national reinsurance corporation covering property, life, and risk"
+  },
+  {
+    "id": "hidcl",
+    "name": "Hydroelectricity Investment Company (HIDCL)",
+    "url": "https://hidcl.org.np",
+    "category": "finance",
+    "description": "National infrastructure financing company for mega hydropower generation and grids"
+  },
+  {
+    "id": "aepc",
+    "name": "Alternative Energy Promotion Centre (AEPC)",
+    "url": "https://aepc.gov.np",
+    "category": "infrastructure",
+    "description": "National agency for rural solar power, micro-hydro, and clean renewable energy"
+  },
+  {
+    "id": "nwsc",
+    "name": "Nepal Water Supply Corporation (NWSC)",
+    "url": "https://nwsc.gov.np",
+    "category": "infrastructure",
+    "description": "National public utility delivering drinking water and sanitation outside the capital"
+  },
+  {
+    "id": "kukl",
+    "name": "Kathmandu Khanepani Limited (KUKL)",
+    "url": "https://kathmanduwater.org",
+    "category": "infrastructure",
+    "description": "Water distribution authority managing the Melamchi project for Kathmandu Valley"
+  },
+  {
+    "id": "nac",
+    "name": "Nepal Airlines Corporation (NAC)",
+    "url": "https://nepalairlines.com.np",
+    "category": "infrastructure",
+    "description": "National flag carrier operating domestic mountain sectors and international flights"
+  },
+  {
+    "id": "dwri",
+    "name": "Department of Water Resources & Irrigation (DWRI)",
+    "url": "https://dwri.gov.np",
+    "category": "infrastructure",
+    "description": "National canal networks, irrigation schemes, and river training projects"
+  },
+  {
+    "id": "doli",
+    "name": "Department of Local Infrastructure (DoLI)",
+    "url": "https://doli.gov.np",
+    "category": "infrastructure",
+    "description": "Rural suspension bridges, agricultural roads, and local infrastructure works"
+  },
+  {
+    "id": "dpr",
+    "name": "Department of Plant Resources (DPR)",
+    "url": "https://dpr.gov.np",
+    "category": "infrastructure",
+    "description": "Medicinal herb research, botanical gardens, and national flora conservation"
+  },
+  {
+    "id": "nja",
+    "name": "Nepal Judicial Academy (NJA)",
+    "url": "https://nja.org.np",
+    "category": "core",
+    "description": "Continuing education institution for judges, prosecutors, and court administration"
+  },
+  {
+    "id": "nwc",
+    "name": "National Women Commission",
+    "url": "https://nwc.gov.np",
+    "category": "core",
+    "description": "Constitutional watchdog protecting women rights, gender equality, and legal aid"
+  },
+  {
+    "id": "ndc",
+    "name": "National Dalit Commission",
+    "url": "https://ndc.gov.np",
+    "category": "core",
+    "description": "Constitutional body investigating caste discrimination and promoting social justice"
+  },
+  {
+    "id": "nic",
+    "name": "National Inclusion Commission",
+    "url": "https://nic.gov.np",
+    "category": "core",
+    "description": "Constitutional commission protecting disabled, senior citizens, and marginalized groups"
+  },
+  {
+    "id": "nnrfc",
+    "name": "Fiscal Commission (NNRFC)",
+    "url": "https://nnrfc.gov.np",
+    "category": "core",
+    "description": "Constitutional body recommending revenue distribution between federal, provincial, and local levels"
+  },
+  {
+    "id": "ddc",
+    "name": "Dairy Development Corporation (DDC)",
+    "url": "https://ddc.gov.np",
+    "category": "citizen",
+    "description": "State dairy enterprise ensuring hygienic milk and dairy distribution across Nepal"
+  },
+  {
+    "id": "fmtc",
+    "name": "Food Management & Trading Company (FMTC)",
+    "url": "https://fmtc.org.np",
+    "category": "citizen",
+    "description": "Public food security corporation maintaining national emergency buffer food stocks"
+  },
+  {
+    "id": "nams-bir",
+    "name": "Bir Hospital / NAMS",
+    "url": "https://nams.org.np",
+    "category": "citizen",
+    "description": "Historic apex referral hospital and government medical sciences academy"
+  },
+  {
+    "id": "sgnhc",
+    "name": "Shahid Gangalal National Heart Centre",
+    "url": "https://sgnhc.org.np",
+    "category": "citizen",
+    "description": "National specialized cardiac hospital providing subsidized open-heart surgeries"
+  },
+  {
+    "id": "kanti-hospital",
+    "name": "Kanti Childrens Hospital",
+    "url": "https://kantichildrenhospital.gov.np",
+    "category": "citizen",
+    "description": "Central tertiary referral hospital dedicated to pediatric care and child surgery"
+  },
+  {
+    "id": "tuth-iom",
+    "name": "TU Teaching Hospital / IOM",
+    "url": "https://iom.edu.np",
+    "category": "citizen",
+    "description": "Premier university teaching hospital and specialist clinical center"
+  },
+  {
+    "id": "afu",
+    "name": "Agriculture & Forestry University (AFU)",
+    "url": "https://afu.edu.np",
+    "category": "education",
+    "description": "State university based in Rampur dedicated to veterinary and forestry sciences"
+  },
+  {
+    "id": "lbu",
+    "name": "Lumbini Buddhist University (LBU)",
+    "url": "https://lbu.edu.np",
+    "category": "education",
+    "description": "Higher education institution focusing on Buddhist philosophy, peace, and culture"
+  },
+  {
+    "id": "nou",
+    "name": "Nepal Open University (NOU)",
+    "url": "https://nou.edu.np",
+    "category": "education",
+    "description": "National distance-learning university offering online and hybrid degree programs"
   }
 ]
