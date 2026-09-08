@@ -89,6 +89,8 @@ export function ServiceTable() {
                 key={service.id}
                 onClick={() => setSelectedServiceId(service.id)}
                 onKeyDown={(e) => {
+                  // Don't swallow keys from the nested external link.
+                  if (e.target !== e.currentTarget) return;
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
                     setSelectedServiceId(service.id);

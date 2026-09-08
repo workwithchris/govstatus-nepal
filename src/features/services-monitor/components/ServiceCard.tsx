@@ -30,6 +30,9 @@ export function ServiceCard({ service }: ServiceCardProps) {
       tabIndex={0}
       onClick={select}
       onKeyDown={(e) => {
+        // Ignore keys originating from the nested external link so keyboard
+        // users can still activate it (Enter would otherwise be swallowed).
+        if (e.target !== e.currentTarget) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           select();

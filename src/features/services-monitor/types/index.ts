@@ -59,6 +59,8 @@ export const serviceHealthSchema = seedServiceSchema.extend({
   history: z.string().length(24),
   /** One latency (ms) per history slot, aligned by index. */
   latencies: z.array(z.number().nullable()).length(24),
+  /** ISO date the TLS certificate expires; null when unknown/not probed. */
+  certExpiresAt: z.string().nullable(),
 });
 export type ServiceHealth = z.infer<typeof serviceHealthSchema>;
 
@@ -75,10 +77,18 @@ export const healthSummarySchema = z.object({
 });
 export type HealthSummary = z.infer<typeof healthSummarySchema>;
 
+export const healthSourceSchema = z.enum(["live", "simulated"]);
+export type HealthSource = z.infer<typeof healthSourceSchema>;
+
 export const healthResponseSchema = z.object({
   checkedAt: z.string(),
   summary: healthSummarySchema,
   services: z.array(serviceHealthSchema),
+  /**
+   * "live" when history comes from persisted Cloudflare D1 buckets;
+   * "simulated" when D1 is unconfigured/unreachable and bars are fabricated.
+   */
+  source: healthSourceSchema,
 });
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 

@@ -57,3 +57,8 @@ export function formatHour(iso: string): string {
     minute: "2-digit",
   });
 }
+
+/** Whole days remaining until a TLS cert expires (negative = expired). */
+export function certDaysLeft(iso: string): number {
+  return Math.floor((Date.parse(iso) - Date.now()) / 86_400_000);
+}

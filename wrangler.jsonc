@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Deployed name. Must match the Cloudflare Pages project name — and
+  // WORKER_SELF_REFERENCE.service below must equal it, or deploy fails with
+  // error 10143 (binding references a worker that doesn't exist).
+  "name": "govstatus-nepal",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-06-01",
+  "compatibility_flags": [
+    // Node.js API for the probe engine (undici fetch, AbortSignal.timeout)
+    "nodejs_compat",
+    // Allow fetch to public URLs (gov portals)
+    "global_fetch_strictly_public"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      // Must equal the "name" above — OpenNext uses it for ISR revalidation.
+      "service": "govstatus-nepal"
+    }
+  ]
+}

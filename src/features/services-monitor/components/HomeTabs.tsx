@@ -8,6 +8,7 @@ import { CategoryFilters } from "@/features/services-monitor/components/Category
 import { MetricsOverview } from "@/features/services-monitor/components/MetricsOverview";
 import { SearchAndSortBar } from "@/features/services-monitor/components/SearchAndSortBar";
 import { ServicesView } from "@/features/services-monitor/components/ServicesView";
+import { SimulatedDataNotice } from "@/features/services-monitor/components/SimulatedDataNotice";
 
 export function HomeTabs() {
   return (
@@ -24,6 +25,7 @@ export function HomeTabs() {
       </TabsList>
 
       <TabsContent value="dashboard" className="space-y-10">
+        <SimulatedDataNotice />
         <MetricsOverview />
         <div className="space-y-4">
           <SearchAndSortBar />

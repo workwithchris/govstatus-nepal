@@ -12,7 +12,7 @@ backed by a persisted status history in Cloudflare D1.
 
 ## What it does
 
-- **Parallel health probes** — 38 government services (passports, tax, land
+- **Parallel health probes** — 92 government services (passports, tax, land
   records, ministries, palikas…) checked concurrently every 60s with an 8s
   `AbortController` timeout and a custom bot user agent
 - **Status derivation** — `operational` (200–399 under 3.5s), `degraded`
@@ -20,17 +20,30 @@ backed by a persisted status history in Cloudflare D1.
 - **TLS-relaxed retry** — Node/undici rejects incomplete certificate chains
   that browsers tolerate; probes retry once with relaxed TLS so certificate
   quirks don't read as outages
-- **24-hour uptime bars** — hourly history per service, persisted to
-  Cloudflare D1 (7-day retention), newest slot always from the live probe
+- **24-hour uptime bars** — hourly history per service, aggregated per hour
+  from every probe sample and persisted to Cloudflare D1 (7-day retention).
+  An hour counts as `down` if any sample in that hour was down, so a
+  one-minute blip isn't hidden by a good final check
+- **TLS cert tracking** — cert expiry is captured via a lightweight TLS
+  handshake (re-checked every 6h, Node only) and surfaced per service
+- **Status-change alerts** — when a service transitions to/from down or
+  degraded, a JSON webhook (`ALERT_WEBHOOK_URL`) fires with the transition
+  details
 - **Live probe loader** — a full-page loader with real progress
   (checked/total, down/degraded counts, recent completions) streamed from a
   progress endpoint
 - **Dashboard** — metric cards, instant search, category tabs with counts,
   sort by status/name/latency, card grid + sortable table view, dark/light
   mode
+- **Incident feed** — `/api/incidents` (JSON) and `/feed.xml` (RSS 2.0)
+  derived from the persisted hourly history: contiguous non-operational runs
+  per service over the last 7 days
 - **Caching** — ISR (`revalidate = 60`) plus `s-maxage=60,
   stale-while-revalidate=30`; probes run at most once per minute regardless
   of traffic
+- **Honest fallback** — when D1 is unconfigured/unreachable the API reports
+  `source: "simulated"` and the dashboard shows a banner, so fabricated
+  history is never mistaken for real uptime
 
 ## Monitored services
 
@@ -107,8 +120,27 @@ CLOUDFLARE_D1_DATABASE_ID=...
 CLOUDFLARE_API_TOKEN=...
 ```
 
-Each probe cycle then reads the last 24h of real history and appends its
-results (one batch insert + a retention delete per run).
+Each probe cycle then reads the last 24h of real history, upserts the current
+hour's aggregate bucket, refreshes per-service state, and prunes rows older
+than 7 days. Live status is published every minute from the probe; D1 history
+is persisted every **5 minutes** (not every cycle) to stay inside D1's
+free-tier daily row-write limit — ~53k writes/day vs 100k.
+
+> Existing database from the previous (per-minute) schema? Rebuild it once:
+>
+> ```bash
+> npx wrangler d1 execute govstatus-history --remote --file d1/migrations/001_hourly-bucket-aggregation.sql
+> ```
+
+### Optional: status-change alerts
+
+Set `ALERT_WEBHOOK_URL` to any endpoint that accepts a POST JSON body
+(Telegram bot, ntfy, Slack, Make/Zapier…). The probe cycle posts on
+transitions to/from `down`/`degraded`:
+
+```json
+{ "text": "[DOWN] Department of Passports — https://… (was operational, http 503)", "checkedAt": "…", "events": [ … ] }
+```
 
 ## Scripts
 
@@ -134,6 +166,12 @@ npm install -g opennextjs-cloudflare
 opennextjs-cloudflare build
 npx wrangler deploy --dry-run   # via open-next.output/
 ```
+
+A root `wrangler.jsonc` is committed: it pins the Worker name to
+`govstatus-nepal` (must match your Cloudflare Pages project name) and sets
+`WORKER_SELF_REFERENCE.service` to the same value — OpenNext uses that
+binding for ISR revalidation, and if the two diverge, deploy fails with
+error 10143.
 
 Workers notes:
 - Set `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_D1_DATABASE_ID`,

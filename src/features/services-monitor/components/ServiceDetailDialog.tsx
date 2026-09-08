@@ -16,6 +16,7 @@ import { STATUS_META } from "@/features/services-monitor/components/status-meta"
 import { useDetailStore } from "@/features/services-monitor/store/useDetailStore";
 import { useServicesHealth } from "@/features/services-monitor/api/useServicesHealth";
 import {
+  certDaysLeft,
   cn,
   decodeHistory,
   formatHour,
@@ -41,6 +42,38 @@ function StatBox({
         {value}
       </p>
     </div>
+  );
+}
+
+function TlsCertLine({ certExpiresAt }: { certExpiresAt: string | null }) {
+  if (!certExpiresAt) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        TLS certificate expiry unknown
+      </p>
+    );
+  }
+
+  const daysLeft = certDaysLeft(certExpiresAt);
+  const tone =
+    daysLeft < 0
+      ? "text-rose-600 dark:text-rose-400"
+      : daysLeft < 30
+        ? "text-amber-600 dark:text-amber-400"
+        : "text-emerald-600 dark:text-emerald-400";
+
+  return (
+    <p className="text-xs text-muted-foreground">
+      TLS certificate expires{" "}
+      <span className={cn("font-mono", tone)}>
+        {new Date(certExpiresAt).toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })}
+      </span>{" "}
+      ({daysLeft < 0 ? "expired" : `${daysLeft}d left`})
+    </p>
   );
 }
 
@@ -177,6 +210,8 @@ export function ServiceDetailDialog() {
             <p className="text-xs text-muted-foreground">
               Last checked {formatTimeAgo(service.checkedAt)}
             </p>
+
+            <TlsCertLine certExpiresAt={service.certExpiresAt} />
 
             <Button size="sm" asChild>
               <a

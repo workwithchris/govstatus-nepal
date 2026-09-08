@@ -6,6 +6,7 @@ import {
   healthResponseSchema,
   seedServiceSchema,
   type HealthResponse,
+  type HealthSource,
   type HealthStatus,
   type ProbeProgress,
   type SeedService,
@@ -17,6 +18,24 @@ const PROBE_TIMEOUT_MS = 8000;
 const SLOW_THRESHOLD_MS = 3500;
 const HISTORY_SLOTS = 24;
 const HOUR_MS = 60 * 60 * 1000;
+const RETENTION_DAYS = 7;
+/**
+ * How often D1 is written. Probes still run every minute (live status is
+ * served from the module cache), but persisting history every minute would
+ * blow past D1's free-tier write limit (~266k rows/day vs 100k). Batching to
+ * every 5 minutes lands at ~53k writes/day. History reads are gated the same
+ * way, cutting D1 reads ~5x too.
+ *
+ * Overridable via PERSIST_INTERVAL_MINUTES (min 1). Example: 10 → ~27k
+ * writes/day, safer if the Cloudflare account hosts other D1 databases.
+ */
+const persistIntervalMinutes = Number(process.env.PERSIST_INTERVAL_MINUTES);
+const PERSIST_INTERVAL_MS =
+  (persistIntervalMinutes >= 1 && Number.isFinite(persistIntervalMinutes)
+    ? persistIntervalMinutes
+    : 5) * 60 * 1000;
+/** How often TLS certs are re-probed (not every probe cycle). */
+const CERT_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const USER_AGENT =
   "GovStatusNepal-HealthBot/1.0 (+https://govstatusnepal.techyatraa.com)";
 
@@ -54,6 +73,20 @@ function probeRequest(url: string, signal: AbortSignal, dispatcher?: Agent) {
   });
 }
 
+/**
+ * Release the response socket: undici keeps the connection in-flight until
+ * the body is drained/cancelled. Probing 92 services every minute would
+ * otherwise leak sockets and defeat keep-alive reuse. We only need the
+ * status line, so cancel the body immediately.
+ */
+async function drainBody(res: Awaited<ReturnType<typeof probeRequest>>): Promise<void> {
+  try {
+    if (res.body) await res.body.cancel();
+  } catch {
+    /* already aborted/closed */
+  }
+}
+
 interface ProbeResult {
   status: HealthStatus;
   responseTime: number | null;
@@ -81,6 +114,7 @@ async function probeService(url: string): Promise<ProbeResult> {
       if (!relaxed) throw err;
       res = await probeRequest(url, controller.signal, relaxed);
     }
+    await drainBody(res);
     const responseTime = Math.round(performance.now() - startedAt);
 
     if (res.status >= 200 && res.status < 400) {
@@ -103,6 +137,72 @@ async function probeService(url: string): Promise<ProbeResult> {
   }
 }
 
+/* --------------------------- TLS certificate probe ------------------------- */
+
+/**
+ * Lightweight TLS handshake (Node only) to read the peer certificate's
+ * expiry. Separate from the HTTP probe because undici's fetch doesn't expose
+ * the socket. Rate-limited by a module cache — re-checked every
+ * CERT_CHECK_INTERVAL_MS instead of every cycle. Never throws; returns epoch
+ * ms of `valid_to`, or null when the cert can't be read.
+ */
+async function probeCertExpiryMs(urlString: string): Promise<number | null> {
+  if (!IS_NODE) return null;
+  let url: URL;
+  try {
+    url = new URL(urlString);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:") return null;
+
+  try {
+    const tls = await import("node:tls");
+    const result = await new Promise<number | null>((resolve) => {
+      const socket = tls.connect({
+        host: url.hostname,
+        servername: url.hostname,
+        port: Number(url.port) || 443,
+        rejectUnauthorized: false,
+      });
+      const timer = setTimeout(() => {
+        socket.destroy();
+        resolve(null);
+      }, 6000);
+      socket.once("secureConnect", () => {
+        clearTimeout(timer);
+        const cert = socket.getPeerCertificate();
+        socket.destroy();
+        resolve(cert.valid_to ? Date.parse(cert.valid_to) || null : null);
+      });
+      socket.once("error", () => {
+        clearTimeout(timer);
+        socket.destroy();
+        resolve(null);
+      });
+    });
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+interface CertCacheEntry {
+  expiresMs: number | null;
+  checkedMs: number;
+}
+
+const certCache = new Map<string, CertCacheEntry>();
+
+/** Certs due for re-probing this cycle (not seen within the last 6h). */
+function certsDue(services: SeedService[]): SeedService[] {
+  const now = Date.now();
+  return services.filter((service) => {
+    const entry = certCache.get(service.id);
+    return !entry || now - entry.checkedMs >= CERT_CHECK_INTERVAL_MS;
+  });
+}
+
 /** Deterministic string hash so simulated history is stable per hour slot. */
 function hashSeed(input: string): number {
   let hash = 0;
@@ -116,7 +216,7 @@ function hashSeed(input: string): number {
  * Simulated 24-hour history (24 hourly bars) used until D1 history exists.
  * Slots are derived from a deterministic hash of (service id, hour bucket) so
  * they stay stable across refetches; the newest slot always reflects the live
- * probe result.
+ * probe result. Only used when D1 is unconfigured/unreachable.
  */
 function simulateSlot(service: SeedService, bucketStart: number): UptimeSlot {
   const timestamp = new Date(bucketStart).toISOString();
@@ -129,25 +229,29 @@ function simulateSlot(service: SeedService, bucketStart: number): UptimeSlot {
   return { timestamp, status, responseTime };
 }
 
+/* ---------------------------------- D1 ------------------------------------ */
+
 /**
- * Persisted status history (Cloudflare D1): latest check per service per
- * hourly bucket over the last 24 hours.
+ * Hourly aggregate history: one row per service per hour bucket. `worst_status`
+ * is the worst status observed across all probe samples in that hour and
+ * `sample_count`/`sum_response_ms` give the average latency.
  */
 interface HistoryRow {
   service_id: string;
-  status: HealthStatus;
-  response_time: number | null;
-  last_ms: number;
+  bucket_ms: number;
+  worst_status: HealthStatus;
+  sample_count: number;
+  sum_response_ms: number;
+  checked_at_ms: number;
 }
 
 type HistoryIndex = Map<string, Map<number, HistoryRow>>;
 
 async function loadHistory(sinceMs: number): Promise<HistoryIndex> {
   const rows = await d1Query<HistoryRow>(
-    `SELECT service_id, status, response_time, MAX(checked_at_ms) AS last_ms
+    `SELECT service_id, bucket_ms, worst_status, sample_count, sum_response_ms, checked_at_ms
      FROM status_checks
-     WHERE checked_at_ms >= ?
-     GROUP BY service_id, checked_at_ms / ${HOUR_MS}`,
+     WHERE bucket_ms >= ?`,
     [sinceMs]
   );
 
@@ -158,45 +262,105 @@ async function loadHistory(sinceMs: number): Promise<HistoryIndex> {
       byHour = new Map();
       index.set(row.service_id, byHour);
     }
-    byHour.set(Math.floor(row.last_ms / HOUR_MS) * HOUR_MS, row);
+    byHour.set(row.bucket_ms, row);
   }
   return index;
 }
 
+/** Average latency for an aggregate bucket, or null when no latency recorded. */
+function bucketLatency(row: HistoryRow): number | null {
+  if (row.sample_count <= 0) return null;
+  return Math.round(row.sum_response_ms / row.sample_count);
+}
+
+interface MetaRow {
+  service_id: string;
+  last_status: HealthStatus;
+  last_checked_at_ms: number;
+  cert_expires_at_ms: number | null;
+  cert_checked_at_ms: number | null;
+}
+
+type MetaIndex = Map<string, MetaRow>;
+
+async function loadServiceMeta(): Promise<MetaIndex> {
+  const rows = await d1Query<MetaRow>(
+    `SELECT service_id, last_status, last_checked_at_ms, cert_expires_at_ms, cert_checked_at_ms
+     FROM service_meta`
+  );
+  return new Map(rows.map((row) => [row.service_id, row]));
+}
+
+/** Split D1 batch statements so no single call exceeds the statement cap. */
+async function d1BatchChunked(
+  statements: { sql: string; params: unknown[] }[],
+  chunkSize = 60
+): Promise<void> {
+  for (let i = 0; i < statements.length; i += chunkSize) {
+    await d1Batch(statements.slice(i, i + chunkSize));
+  }
+}
+
+/**
+ * Persist this cycle: upsert each service's current hour bucket (worst-status
+ * aggregation), refresh per-service meta (current status + refreshed certs),
+ * and prune buckets older than the retention window. All in one batch.
+ */
 async function persistChecks(
   services: ServiceHealth[],
   checkedAtMs: number,
-  checkedAt: string
+  certRefreshes: Map<string, number>
 ): Promise<void> {
-  // SQLite caps bind variables per statement (~100 on D1), so chunk the
-  // multi-row INSERT and send all statements in one atomic batch.
-  const CHUNK_SIZE = 15; // rows per statement (6 params each)
   const statements: { sql: string; params: unknown[] }[] = [];
 
-  for (let i = 0; i < services.length; i += CHUNK_SIZE) {
-    const chunk = services.slice(i, i + CHUNK_SIZE);
-    const values = chunk.map(() => "(?, ?, ?, ?, ?, ?)").join(", ");
-    const params = chunk.flatMap((service) => [
-      service.id,
-      service.status,
-      service.responseTime,
-      service.httpStatus,
-      checkedAtMs,
-      checkedAt,
-    ]);
+  const bucketMs = Math.floor(checkedAtMs / HOUR_MS) * HOUR_MS;
+
+  for (const service of services) {
     statements.push({
-      sql: `INSERT INTO status_checks (service_id, status, response_time, http_status, checked_at_ms, checked_at) VALUES ${values}`,
-      params,
+      sql: `INSERT INTO status_checks (service_id, bucket_ms, worst_status, sample_count, sum_response_ms, checked_at_ms)
+            VALUES (?, ?, ?, 1, ?, ?)
+            ON CONFLICT(service_id, bucket_ms) DO UPDATE SET
+              worst_status = CASE
+                WHEN worst_status = 'down' OR excluded.worst_status = 'down' THEN 'down'
+                WHEN worst_status = 'degraded' OR excluded.worst_status = 'degraded' THEN 'degraded'
+                ELSE 'operational' END,
+              sample_count = sample_count + 1,
+              sum_response_ms = sum_response_ms + excluded.sum_response_ms,
+              checked_at_ms = excluded.checked_at_ms`,
+      params: [
+        service.id,
+        bucketMs,
+        service.status,
+        service.responseTime ?? 0,
+        checkedAtMs,
+      ],
+    });
+
+    statements.push({
+      sql: `INSERT INTO service_meta
+              (service_id, last_status, last_checked_at_ms, cert_expires_at_ms, cert_checked_at_ms)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(service_id) DO UPDATE SET
+              last_status = excluded.last_status,
+              last_checked_at_ms = excluded.last_checked_at_ms,
+              cert_expires_at_ms = COALESCE(excluded.cert_expires_at_ms, service_meta.cert_expires_at_ms),
+              cert_checked_at_ms = COALESCE(excluded.cert_checked_at_ms, service_meta.cert_checked_at_ms)`,
+      params: [
+        service.id,
+        service.status,
+        checkedAtMs,
+        certRefreshes.get(service.id) ?? null,
+        certRefreshes.has(service.id) ? Date.now() : null,
+      ],
     });
   }
 
   statements.push({
-    // Retention: keep one week of history.
-    sql: "DELETE FROM status_checks WHERE checked_at_ms < ?",
-    params: [checkedAtMs - 7 * 24 * HOUR_MS],
+    sql: "DELETE FROM status_checks WHERE bucket_ms < ?",
+    params: [checkedAtMs - RETENTION_DAYS * 24 * HOUR_MS],
   });
 
-  await d1Batch(statements);
+  await d1BatchChunked(statements);
 }
 
 function buildHistory(
@@ -214,7 +378,11 @@ function buildHistory(
 
     // Newest slot always reflects the live probe result.
     if (i === 0) {
-      slots.push({ timestamp: new Date(bucketStart).toISOString(), status: live.status, responseTime: live.responseTime });
+      slots.push({
+        timestamp: new Date(bucketStart).toISOString(),
+        status: live.status,
+        responseTime: live.responseTime,
+      });
       continue;
     }
 
@@ -223,13 +391,13 @@ function buildHistory(
       const row = realHistory.get(bucketStart);
       slots.push({
         timestamp: new Date(bucketStart).toISOString(),
-        status: row?.status ?? null,
-        responseTime: row?.response_time ?? null,
+        status: row?.worst_status ?? null,
+        responseTime: row ? bucketLatency(row) : null,
       });
       continue;
     }
 
-    // No persisted history yet (D1 unconfigured or empty) → simulation.
+    // No persisted history yet (D1 unconfigured or unreachable) → simulation.
     slots.push(simulateSlot(service, bucketStart));
   }
 
@@ -284,13 +452,15 @@ async function checkService(
     httpStatus: live.httpStatus,
     checkedAt,
     uptimePercentage: computeUptimePercentage(uptime24h),
+    certExpiresAt: null,
     ...encodeHistory(uptime24h),
   };
 }
 
 function buildHealthResponse(
   services: ServiceHealth[],
-  checkedAt: string
+  checkedAt: string,
+  source: HealthSource
 ): HealthResponse {
   const count = (status: HealthStatus) =>
     services.filter((service) => service.status === status).length;
@@ -317,8 +487,78 @@ function buildHealthResponse(
         count("down") > 0 ? "outage" : count("degraded") > 0 ? "degraded" : "normal",
     },
     services,
+    source,
   });
 }
+
+/* --------------------------------- Alerting -------------------------------- */
+
+interface TransitionEvent {
+  serviceId: string;
+  name: string;
+  url: string;
+  previousStatus: HealthStatus | null;
+  currentStatus: HealthStatus;
+  httpStatus: number | null;
+}
+
+/** Status transitions worth alerting on: worsening or recovery. */
+function computeTransitions(
+  services: ServiceHealth[],
+  prevMeta: MetaIndex | null
+): TransitionEvent[] {
+  if (!prevMeta) return [];
+  const events: TransitionEvent[] = [];
+  for (const service of services) {
+    const previous = prevMeta.get(service.id)?.last_status ?? null;
+    if (previous === null || previous === service.status) continue;
+    events.push({
+      serviceId: service.id,
+      name: service.name,
+      url: service.url,
+      previousStatus: previous,
+      currentStatus: service.status,
+      httpStatus: service.httpStatus,
+    });
+  }
+  return events;
+}
+
+/**
+ * Fire a generic JSON webhook for status transitions. Configure
+ * `ALERT_WEBHOOK_URL` (any endpoint that accepts POST JSON — Telegram bot,
+ * Slack, ntfy, etc.). No-op when unset.
+ */
+async function sendAlerts(events: TransitionEvent[], checkedAt: string) {
+  const webhookUrl = process.env.ALERT_WEBHOOK_URL;
+  if (!webhookUrl || events.length === 0) return;
+
+  const text = events
+    .map(
+      (event) =>
+        `[${event.currentStatus.toUpperCase()}] ${event.name} — ${event.url} ` +
+        `(was ${event.previousStatus ?? "unknown"}, http ${event.httpStatus ?? "—"})`
+    )
+    .join("\n");
+
+  try {
+    const res = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, checkedAt, events }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      console.error(
+        `[govstatus] alert webhook failed: ${res.status} ${await res.text()}`
+      );
+    }
+  } catch (err) {
+    console.error("[govstatus] alert webhook failed:", err);
+  }
+}
+
+/* ---------------------------------- Cache ---------------------------------- */
 
 /**
  * Module-level cache so repeated requests (dev server, page + API route,
@@ -327,6 +567,11 @@ function buildHealthResponse(
  */
 let cached: { data: HealthResponse; at: number } | null = null;
 let inFlight: Promise<HealthResponse> | null = null;
+
+/** Last persisted cycle timestamp; gates D1 writes + history reads. */
+let lastPersistAt = 0;
+/** Last-loaded history index, reused between persist cycles. */
+let historyCache: HistoryIndex | null = null;
 
 /** Live state of the running probe cycle, surfaced to the loader UI. */
 let currentProgress: ProbeProgress | null = null;
@@ -353,13 +598,41 @@ async function runChecks(): Promise<HealthResponse> {
   };
 
   // Real recorded history from D1; falls back to simulation when the
-  // database is unconfigured, unreachable, or still empty.
-  let realHistory: HistoryIndex | null = null;
-  try {
-    realHistory = await loadHistory(checkedAtMs - 24 * HOUR_MS);
-  } catch (err) {
-    console.error("[govstatus] D1 history read failed, simulating:", err);
+  // database is unconfigured or unreachable. An *empty* configured database
+  // yields grey "no data" slots, not fabricated bars. History only changes
+  // on persist, so between persist cycles we reuse the last-loaded index —
+  // this is what keeps D1 reads within the free-tier limit.
+  const shouldPersist =
+    !!d1Config && checkedAtMs - lastPersistAt >= PERSIST_INTERVAL_MS;
+
+  let realHistory = historyCache;
+  if (shouldPersist || !realHistory) {
+    try {
+      const fresh = await loadHistory(checkedAtMs - HISTORY_SLOTS * HOUR_MS);
+      historyCache = fresh;
+      realHistory = fresh;
+    } catch (err) {
+      console.error("[govstatus] D1 history read failed, simulating:", err);
+      // Keep the previous index (if any) rather than regressing to simulation.
+    }
   }
+  const source: HealthSource = realHistory ? "live" : "simulated";
+
+  // Current per-service state (transition compare + persisted certs).
+  let prevMeta: MetaIndex | null = null;
+  if (d1Config) {
+    try {
+      prevMeta = await loadServiceMeta();
+    } catch (err) {
+      console.error("[govstatus] D1 meta read failed:", err);
+    }
+  }
+
+  // Refresh due TLS certs in parallel with the HTTP probes (Node only).
+  const certResults = certsDue(seeds).map(async (service) => ({
+    id: service.id,
+    expiresMs: await probeCertExpiryMs(service.url),
+  }));
 
   const services = await Promise.all(
     seeds.map(async (service) => {
@@ -380,10 +653,35 @@ async function runChecks(): Promise<HealthResponse> {
     })
   );
 
-  if (d1Config) {
+  const certRefreshes = new Map<string, number>();
+  for (const cert of await Promise.all(certResults)) {
+    if (cert.expiresMs === null) continue;
+    certCache.set(cert.id, {
+      expiresMs: cert.expiresMs,
+      checkedMs: Date.now(),
+    });
+    certRefreshes.set(cert.id, cert.expiresMs);
+  }
+
+  // Attach certificate expiry to each service (fresh probe or persisted).
+  const withCerts = services.map((service) => {
+    const fresh = certCache.get(service.id)?.expiresMs;
+    const persisted = prevMeta?.get(service.id)?.cert_expires_at_ms ?? null;
+    const expiresMs = fresh ?? persisted;
+    return {
+      ...service,
+      certExpiresAt: expiresMs ? new Date(expiresMs).toISOString() : null,
+    };
+  });
+
+  if (shouldPersist) {
     currentProgress = { ...currentProgress!, phase: "persisting" };
     try {
-      await persistChecks(services, checkedAtMs, checkedAt);
+      await persistChecks(withCerts, checkedAtMs, certRefreshes);
+      lastPersistAt = checkedAtMs;
+      // Alerts only fire on the persist cycle, so a failed persist retries
+      // and never double-sends a transition.
+      await sendAlerts(computeTransitions(withCerts, prevMeta), checkedAt);
     } catch (err) {
       console.error("[govstatus] D1 persist failed:", err);
     }
@@ -396,13 +694,13 @@ async function runChecks(): Promise<HealthResponse> {
     finishedAt: new Date().toISOString(),
   };
 
-  return buildHealthResponse(services, checkedAt);
+  return buildHealthResponse(withCerts, checkedAt, source);
 }
 
 /**
- * Fast path: build a snapshot of the last-known state straight from the D1
- * history (no network probes). Returns null when the database is unconfigured
- * or doesn't yet hold a full 24h record for every service.
+ * Fast path: build a snapshot of the last-known state straight from D1 (no
+ * network probes). Returns null when the database is unconfigured or doesn't
+ * yet hold a meta row for every service.
  */
 async function getLastKnownFromDb(): Promise<HealthResponse | null> {
   if (!d1Config) return null;
@@ -411,37 +709,37 @@ async function getLastKnownFromDb(): Promise<HealthResponse | null> {
   const checkedAt = new Date(now).toISOString();
 
   try {
-    const history = await loadHistory(now - 24 * HOUR_MS);
+    const [history, meta] = await Promise.all([
+      loadHistory(now - HISTORY_SLOTS * HOUR_MS),
+      loadServiceMeta(),
+    ]);
     const services: ServiceHealth[] = [];
 
     for (const seed of seeds) {
-      const byHour = history.get(seed.id);
-      if (!byHour) return null;
-      const latest = [...byHour.values()].reduce((a, b) =>
-        a.last_ms > b.last_ms ? a : b
-      );
+      const metaRow = meta.get(seed.id);
+      if (!metaRow) return null;
+      const byHour = history.get(seed.id) ?? new Map();
       const uptime24h = buildHistory(
         seed,
-        {
-          status: latest.status,
-          responseTime: latest.response_time,
-          httpStatus: null,
-        },
+        { status: metaRow.last_status, responseTime: null, httpStatus: null },
         checkedAt,
         byHour
       );
       services.push({
         ...seed,
-        status: latest.status,
-        responseTime: latest.response_time,
+        status: metaRow.last_status,
+        responseTime: null,
         httpStatus: null,
-        checkedAt: new Date(latest.last_ms).toISOString(),
+        checkedAt: new Date(metaRow.last_checked_at_ms).toISOString(),
         uptimePercentage: computeUptimePercentage(uptime24h),
+        certExpiresAt: metaRow.cert_expires_at_ms
+          ? new Date(metaRow.cert_expires_at_ms).toISOString()
+          : null,
         ...encodeHistory(uptime24h),
       });
     }
 
-    return buildHealthResponse(services, checkedAt);
+    return buildHealthResponse(services, checkedAt, "live");
   } catch (err) {
     console.error("[govstatus] D1 snapshot failed:", err);
     return null;
