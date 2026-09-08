@@ -1,26 +1,10 @@
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { HomeTabs } from "@/features/services-monitor";
 
-import {
-  HomeTabs,
-  SERVICES_HEALTH_QUERY_KEY,
-} from "@/features/services-monitor";
-import { getServicesHealth } from "@/features/services-monitor/server/health-probe";
-import { getQueryClient } from "@/lib/query-client";
-
-// Page (with embedded health data) regenerates every minute.
-export const revalidate = 60;
-
-export default async function DashboardPage() {
-  const queryClient = getQueryClient();
-
-  // Prefetch into the shared per-request client so SSR renders with data
-  // already on screen (module cache → D1 snapshot; the background probe never
-  // blocks first paint). The same getQueryClient() is used by <Providers/>.
-  await queryClient.prefetchQuery({
-    queryKey: SERVICES_HEALTH_QUERY_KEY,
-    queryFn: getServicesHealth,
-  });
-
+// Fully static: the shell is served instantly from the CDN edge cache and
+// all live data is fetched client-side by React Query (which re-renders on
+// data arrival — the metric cards and tables have their own skeletons).
+// Keeps per-request work off the Worker and out of D1.
+export default function DashboardPage() {
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:py-14">
       <header className="mb-10 max-w-2xl space-y-3">
@@ -40,10 +24,7 @@ export default async function DashboardPage() {
         </p>
       </header>
 
-      <HydrationBoundary state={dehydrate(queryClient)}>
-        <HomeTabs />
-      </HydrationBoundary>
+      <HomeTabs />
     </main>
   );
 }
-
