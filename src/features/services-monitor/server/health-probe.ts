@@ -50,6 +50,9 @@ const USER_AGENT =
 const IS_NODE =
   typeof process !== "undefined" && process.release?.name === "node";
 
+/** Logs the first probe failure once (diagnostic). */
+let probeErrorLogged = false;
+
 let relaxedTlsAgent: Agent | null = null;
 function getRelaxedTlsAgent(): Agent | null {
   if (!IS_NODE || relaxedTlsAgent) return relaxedTlsAgent;
@@ -62,15 +65,18 @@ function getRelaxedTlsAgent(): Agent | null {
 }
 
 function probeRequest(url: string, signal: AbortSignal, dispatcher?: Agent) {
-  return undiciFetch(url, {
+  const base = {
     headers: {
       "User-Agent": USER_AGENT,
       Accept: "text/html,application/xhtml+xml,*/*;q=0.8",
     },
-    redirect: "follow",
+    redirect: "follow" as const,
     signal,
-    ...(dispatcher ? { dispatcher } : {}),
-  });
+  };
+  // The `undici` package's fetch implementation doesn't work on workerd
+  // (Node compat layer), so primary probes use the platform fetch. The
+  // undici dispatcher is only used for the Node-only relaxed-TLS retry.
+  return dispatcher ? undiciFetch(url, { ...base, dispatcher }) : fetch(url, base);
 }
 
 /**
@@ -130,7 +136,16 @@ async function probeService(url: string): Promise<ProbeResult> {
       responseTime,
       httpStatus: res.status,
     };
-  } catch {
+  } catch (err) {
+    if (!probeErrorLogged) {
+      probeErrorLogged = true;
+      console.error(
+        "[govstatus] first probe error:",
+        err,
+        "| isNode:",
+        IS_NODE
+      );
+    }
     return { status: "down", responseTime: null, httpStatus: null };
   } finally {
     clearTimeout(timeout);
