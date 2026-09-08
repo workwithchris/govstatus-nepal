@@ -1,4 +1,4 @@
-import { probeNow } from "@/features/services-monitor/server/health-probe";
+import { probeNow, SERVE_ONLY } from "@/features/services-monitor/server/health-probe";
 
 export const runtime = "nodejs";
 
@@ -9,6 +9,15 @@ export const runtime = "nodejs";
  * sends this automatically) or `x-cron-secret: <CRON_SECRET>`.
  */
 export async function POST(req: Request) {
+  // Serve-only deployments (Cloudflare Worker) never probe — the Nepal-vantage
+  // probe (`probe/nepal-probe.mjs`) owns probing and writes D1 directly.
+  if (SERVE_ONLY) {
+    return Response.json(
+      { error: "Probing disabled on this deployment" },
+      { status: 403 }
+    );
+  }
+
   const secret = process.env.CRON_SECRET;
   if (!secret) {
     return Response.json(

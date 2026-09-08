@@ -13,8 +13,11 @@ backed by a persisted status history in Cloudflare D1.
 ## What it does
 
 - **Parallel health probes** — 92 government services (passports, tax, land
-  records, ministries, palikas…) checked concurrently every 60s with an 8s
-  `AbortController` timeout and a custom bot user agent
+  records, ministries, palikas…) checked concurrently every 5 minutes with an
+  8s `AbortController` timeout and a custom bot user agent, **from a
+  Nepal-vantage point** (Cloudflare datacenter IPs are WAF-blocked and
+  TLS-strict-rejected by many .np portals, which made foreign-vantage
+  "down" readings unreliable)
 - **Status derivation** — `operational` (200–399 under 3.5s), `degraded`
   (slow or 403/WAF), `down` (5xx, refused, timeout)
 - **TLS-relaxed retry** — Node/undici rejects incomplete certificate chains
@@ -39,8 +42,7 @@ backed by a persisted status history in Cloudflare D1.
   derived from the persisted hourly history: contiguous non-operational runs
   per service over the last 7 days
 - **Caching** — ISR (`revalidate = 60`) plus `s-maxage=60,
-  stale-while-revalidate=30`; probes run at most once per minute regardless
-  of traffic
+  stale-while-revalidate=30`; the Worker is serve-only and never probes
 - **Honest fallback** — when D1 is unconfigured/unreachable the API reports
   `source: "simulated"` and the dashboard shows a banner, so fabricated
   history is never mistaken for real uptime
@@ -184,21 +186,36 @@ Workers notes:
 
 ### Scheduled probing (Cloudflare Cron)
 
-Probing runs on a schedule, never on the request path — `/api/health` and the
-page only serve the last published result from the module cache or D1. A tiny
-Cloudflare Worker (`cron-worker/`) triggers `/api/probe` every minute:
+**Deprecated** — probing now runs on a Nepal-vantage machine via
+`probe/nepal-probe.mjs`, and the Worker is serve-only (`SERVE_ONLY` is
+auto-enabled on workerd; `/api/probe` returns 403). The old cron worker that
+triggered `/api/probe` is no longer needed — undeploy it:
 
 ```bash
-# 1. Point the worker at your app and set the shared secret
-npx wrangler secret put CRON_SECRET -c cron-worker/wrangler.jsonc
-
-# 2. PROBE_URL is preconfigured to https://govstatusnepal.techyatraa.com/api/probe
-
-# 3. Deploy the cron worker
-npx wrangler deploy -c cron-worker/wrangler.jsonc
+npx wrangler delete govstatus-cron -c cron-worker/wrangler.jsonc
 ```
 
-Local trigger for testing: `npx wrangler dev --test-scheduled -c cron-worker/wrangler.jsonc`.
+### Nepal-vantage probing
+
+A standalone Node script probes every service from a Nepal IP and writes
+results straight to D1. The deployed Worker renders those results.
+
+```bash
+# 1. The script reads CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_D1_DATABASE_ID /
+#    CLOUDFLARE_API_TOKEN from .env.local (or the environment).
+# 2. Test once (probes, no writes):
+node probe/nepal-probe.mjs --dry-run
+
+# 3. Run for real (probes + writes D1 + optional alerts):
+node probe/nepal-probe.mjs
+
+# 4. Schedule it every 5 minutes on the Nepal machine (crontab -e):
+0,5,10,15,20,25,30,35,40,45,50,55 * * * * cd /path/to/govstatus && node probe/nepal-probe.mjs >> probe/probe.log 2>&1
+```
+
+Writes ~53k D1 rows/day at 5-min cadence (well inside the 100k free limit).
+Set `ALERT_WEBHOOK_URL` in the environment to keep status-change alerts
+working from the Nepal probe.
 
 ## Notes
 

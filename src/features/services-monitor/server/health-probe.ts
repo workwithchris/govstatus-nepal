@@ -34,6 +34,11 @@ const PERSIST_INTERVAL_MS =
   (persistIntervalMinutes >= 1 && Number.isFinite(persistIntervalMinutes)
     ? persistIntervalMinutes
     : 5) * 60 * 1000;
+
+/**
+ * How often the serve-only worker re-reads the D1 snapshot.
+ */
+const SNAPSHOT_TTL_MS = 5 * 60 * 1000;
 /** How often TLS certs are re-probed (not every probe cycle). */
 const CERT_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const USER_AGENT =
@@ -49,6 +54,16 @@ const USER_AGENT =
  */
 const IS_NODE =
   typeof process !== "undefined" && process.release?.name === "node";
+
+/**
+ * Serve-only mode. Probing from a Cloudflare datacenter (foreign IP, strict
+ * TLS) marks many healthy .np portals as down, so the Worker never probes or
+ * writes D1 — it serves the last-known snapshot written by the Nepal-vantage
+ * probe (`probe/nepal-probe.mjs`). Auto-enabled on non-Node runtimes
+ * (workerd); can be forced with SERVE_ONLY=true for Node deployments too.
+ */
+export const SERVE_ONLY =
+  process.env.SERVE_ONLY === "true" || !IS_NODE;
 
 /** Logs the first probe failure once (diagnostic). */
 let probeErrorLogged = false;
@@ -618,7 +633,9 @@ async function runChecks(): Promise<HealthResponse> {
   // on persist, so between persist cycles we reuse the last-loaded index —
   // this is what keeps D1 reads within the free-tier limit.
   const shouldPersist =
-    !!d1Config && checkedAtMs - lastPersistAt >= PERSIST_INTERVAL_MS;
+    !!d1Config &&
+    !SERVE_ONLY &&
+    checkedAtMs - lastPersistAt >= PERSIST_INTERVAL_MS;
 
   let realHistory = historyCache;
   if (shouldPersist || !realHistory) {
@@ -785,6 +802,24 @@ export function probeNow(): Promise<HealthResponse> {
  * the database is genuinely empty (first run before any cron tick).
  */
 export function getServicesHealth(): Promise<HealthResponse> {
+  if (SERVE_ONLY) {
+    // Serve-only worker: prefer the D1 snapshot (written by the Nepal-vantage
+    // probe) and refresh the module cache on a TTL, so a one-off fallback
+    // probe (empty DB first-run) can never pin foreign-vantage data forever.
+    const cachedAge = cached ? Date.now() - cached.at : Infinity;
+    if (cached && cachedAge < SNAPSHOT_TTL_MS) {
+      return Promise.resolve(cached.data);
+    }
+    return getLastKnownFromDb().then((snapshot) => {
+      if (snapshot) {
+        cached = { data: snapshot, at: Date.now() };
+        return snapshot;
+      }
+      if (cached) return cached.data;
+      return probeNow();
+    });
+  }
+
   if (cached) return Promise.resolve(cached.data);
   return getLastKnownFromDb().then((snapshot) => {
     if (snapshot) {
