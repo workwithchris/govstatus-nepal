@@ -61,7 +61,11 @@ export function MetricsOverview() {
           <p
             className={cn(
               "mt-2 flex items-center gap-2 text-lg font-semibold tracking-[-0.02em]",
-              isNormal ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+              isNormal
+                ? "text-emerald-600 dark:text-emerald-400"
+                : summary.down > 0
+                  ? "text-rose-600 dark:text-rose-400"
+                  : "text-amber-600 dark:text-amber-400"
             )}
           >
             <span

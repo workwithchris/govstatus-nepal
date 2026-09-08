@@ -616,7 +616,11 @@ function buildHealthResponse(
             )
           : null,
       overallStatus:
-        count("down") > 0 ? "outage" : count("degraded") > 0 ? "degraded" : "normal",
+        count("down") >= 5
+          ? "outage"
+          : count("down") > 0 || count("degraded") > 0
+            ? "degraded"
+            : "normal",
     },
     services,
     source,
