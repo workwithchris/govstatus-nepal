@@ -20,7 +20,10 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import crypto from "node:crypto";
 import tls from "node:tls";
+import http from "node:http";
+import https from "node:https";
 import { Agent, fetch as undiciFetch } from "undici";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -39,15 +42,17 @@ const DRY_RUN = process.argv.includes("--dry-run");
 
 function loadEnv() {
   const env = { ...process.env };
-  try {
-    for (const line of readFileSync(join(ROOT, ".env.local"), "utf8").split("\n")) {
-      const t = line.trim();
-      if (!t || t.startsWith("#")) continue;
-      const eq = t.indexOf("=");
-      if (eq > 0) env[t.slice(0, eq)] = t.slice(eq + 1);
+  for (const file of [".env", ".env.local"]) {
+    try {
+      for (const line of readFileSync(join(ROOT, file), "utf8").split("\n")) {
+        const t = line.trim();
+        if (!t || t.startsWith("#")) continue;
+        const eq = t.indexOf("=");
+        if (eq > 0) env[t.slice(0, eq)] = t.slice(eq + 1);
+      }
+    } catch {
+      /* ignore missing */
     }
-  } catch {
-    /* no .env.local */
   }
   return env;
 }
@@ -63,7 +68,7 @@ const d1Config = ["CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_D1_DATABASE_ID", "CLOUDFL
     }
   : null;
 
-if (!d1Config) {
+if (!d1Config && !DRY_RUN) {
   console.error("[nepal-probe] missing Cloudflare D1 env vars");
   process.exit(1);
 }
@@ -94,53 +99,134 @@ const seeds = JSON.parse(readFileSync(join(ROOT, "src/data/seed-services.json"),
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 
+const SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION =
+  crypto.constants?.SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION ?? 0x00040000;
+
+// Explicit connect.timeout, headersTimeout, and bodyTimeout are critical:
+// Undici connector defaults connect.timeout to 10s, which silently aborts
+// slow .np portals (e.g. municipal servers taking 15-30s) despite PROBE_TIMEOUT_MS.
+// allowH2: false is required because several .np WAFs/Nginx proxies reset on h2.
+const primaryAgent = new Agent({
+  allowH2: false,
+  connect: {
+    timeout: PROBE_TIMEOUT_MS,
+    secureOptions: SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION,
+  },
+  headersTimeout: PROBE_TIMEOUT_MS,
+  bodyTimeout: PROBE_TIMEOUT_MS,
+});
+
 let relaxedAgent = null;
 function getRelaxedAgent() {
-  if (!relaxedAgent) relaxedAgent = new Agent({ connect: { rejectUnauthorized: false } });
+  if (!relaxedAgent) {
+    relaxedAgent = new Agent({
+      allowH2: false,
+      connect: {
+        timeout: PROBE_TIMEOUT_MS,
+        rejectUnauthorized: false,
+        secureOptions: SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION,
+      },
+      headersTimeout: PROBE_TIMEOUT_MS,
+      bodyTimeout: PROBE_TIMEOUT_MS,
+    });
+  }
   return relaxedAgent;
 }
 
+/**
+ * Fallback probe using Node's native http/https modules. Immune to ALPN-rejecting
+ * legacy servers (e.g. Oracle WebLogic on OPCR or older Apache) where undici's
+ * forced ALPN extension causes ECONNRESET.
+ */
+function nativeProbeFallback(urlString) {
+  return new Promise((resolve) => {
+    try {
+      const u = new URL(urlString);
+      const mod = u.protocol === "http:" ? http : https;
+      const req = mod.request(
+        u,
+        {
+          method: "GET",
+          headers: {
+            "User-Agent": USER_AGENT,
+            Accept: "text/html,application/xhtml+xml,*/*;q=0.8",
+          },
+          rejectUnauthorized: false,
+          secureOptions: SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION,
+          timeout: PROBE_TIMEOUT_MS,
+        },
+        (res) => {
+          res.resume();
+          resolve(res.statusCode ?? 200);
+        }
+      );
+      req.on("error", () => resolve(null));
+      req.on("timeout", () => {
+        req.destroy();
+        resolve(null);
+      });
+      req.end();
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
 async function probeService(url) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
   const startedAt = Date.now();
 
-  const makeRequest = (dispatcher) =>
-    (dispatcher ? undiciFetch : fetch)(url, {
+  const makeRequest = (dispatcher) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
+    return undiciFetch(url, {
       headers: { "User-Agent": USER_AGENT, Accept: "text/html,application/xhtml+xml,*/*;q=0.8" },
       redirect: "follow",
       signal: controller.signal,
-      ...(dispatcher ? { dispatcher } : {}),
-    });
+      dispatcher: dispatcher ?? primaryAgent,
+    }).finally(() => clearTimeout(timer));
+  };
 
   try {
     let res;
+    let httpStatus = null;
     try {
       res = await makeRequest();
-    } catch (err) {
-      if (controller.signal.aborted) throw err;
-      // Retry once with relaxed TLS (Node-only; Nepal vantage).
-      res = await makeRequest(getRelaxedAgent());
-    }
-    try {
-      if (res.body) await res.body.cancel();
+      httpStatus = res.status;
     } catch {
-      /* closed */
+      // Retry once with relaxed TLS (Node-only; Nepal vantage).
+      try {
+        res = await makeRequest(getRelaxedAgent());
+        httpStatus = res.status;
+      } catch {
+        // Native fallback for legacy servers that reject ALPN
+        httpStatus = await nativeProbeFallback(url);
+      }
     }
+
+    if (res) {
+      try {
+        if (res.body) await res.body.cancel();
+      } catch {
+        /* closed */
+      }
+    }
+
     const responseTime = Math.round(Date.now() - startedAt);
 
-    if (res.status >= 200 && res.status < 400) {
+    if (httpStatus !== null && httpStatus >= 200 && httpStatus < 400) {
       return {
         status: responseTime > SLOW_THRESHOLD_MS ? "degraded" : "operational",
         responseTime,
-        httpStatus: res.status,
+        httpStatus,
       };
     }
-    return { status: res.status === 403 ? "degraded" : "down", responseTime, httpStatus: res.status };
+    return {
+      status: httpStatus === 403 || httpStatus === 429 ? "degraded" : "down",
+      responseTime,
+      httpStatus,
+    };
   } catch {
     return { status: "down", responseTime: null, httpStatus: null };
-  } finally {
-    clearTimeout(timer);
   }
 }
 
@@ -158,7 +244,7 @@ async function probeCertExpiryMs(urlString) {
       const timer = setTimeout(() => {
         socket.destroy();
         resolve(null);
-      }, 6000);
+      }, 15000);
       socket.once("secureConnect", () => {
         clearTimeout(timer);
         const cert = socket.getPeerCertificate();
@@ -178,7 +264,9 @@ async function probeCertExpiryMs(urlString) {
 
 /* --------------------------------- D1 ------------------------------------ */
 
-const D1_URL = `https://api.cloudflare.com/client/v4/accounts/${d1Config.accountId}/d1/database/${d1Config.databaseId}/query`;
+const D1_URL = d1Config
+  ? `https://api.cloudflare.com/client/v4/accounts/${d1Config.accountId}/d1/database/${d1Config.databaseId}/query`
+  : null;
 
 async function query(sql, params = []) {
   const res = await fetch(D1_URL, {
@@ -217,11 +305,11 @@ async function main() {
 
   const [metaRows, certResults] = await Promise.all([
     d1Config ? query("SELECT service_id, last_status, cert_expires_at_ms FROM service_meta") : Promise.resolve([]),
-    mapLimit(seeds, 20, async (s) => ({ id: s.id, expiresMs: await probeCertExpiryMs(s.url) })),
+    mapLimit(seeds, 15, async (s) => ({ id: s.id, expiresMs: await probeCertExpiryMs(s.url) })),
   ]);
   const prevMeta = new Map(metaRows.map((r) => [r.service_id, r]));
 
-  const results = await mapLimit(seeds, 20, async (seed) => {
+  const results = await mapLimit(seeds, 15, async (seed) => {
     const probe = await probeService(seed.url);
     return { seed, probe };
   });

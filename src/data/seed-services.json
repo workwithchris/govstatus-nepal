@@ -2,14 +2,14 @@
   {
     "id": "e-passport",
     "name": "Department of Passports (e-Passport)",
-    "url": "https://emrtds.nepalpassport.gov.np",
+    "url": "https://nepalpassport.gov.np",
     "category": "citizen",
     "description": "Online passport pre-enrollment and appointment booking"
   },
   {
     "id": "dotm-license",
     "name": "Department of Transport Management (License)",
-    "url": "https://applydlnew.dotm.gov.np",
+    "url": "https://dotm.gov.np",
     "category": "citizen",
     "description": "Smart driving license online registration and renewals"
   },
@@ -128,7 +128,7 @@
   {
     "id": "lmc",
     "name": "Lalitpur Metropolitan City",
-    "url": "https://lalitpur.gov.np",
+    "url": "https://lalitpurmun.gov.np",
     "category": "palika",
     "description": "Lalitpur municipal permits, building approvals, and local revenue"
   },
@@ -478,7 +478,7 @@
   {
     "id": "dhm-telemetry",
     "name": "Real-Time River Telemetry",
-    "url": "https://telemetry.dhm.gov.np",
+    "url": "https://hydrology.gov.np",
     "category": "infrastructure",
     "description": "Live river level and discharge monitoring stations"
   },
@@ -506,7 +506,7 @@
   {
     "id": "railways",
     "name": "Department of Railways",
-    "url": "https://railway.gov.np",
+    "url": "https://dorw.gov.np",
     "category": "infrastructure",
     "description": "Railway projects and rail transport policy"
   },
@@ -541,7 +541,7 @@
   {
     "id": "rajpatra",
     "name": "Nepal Printing Office (Rajpatra)",
-    "url": "https://rajpatra.dop.gov.np",
+    "url": "https://dop.gov.np",
     "category": "infrastructure",
     "description": "Nepal Gazette publication and official legal notices"
   },
@@ -555,7 +555,7 @@
   {
     "id": "tu-exam",
     "name": "TU Examination Controller (OCE)",
-    "url": "https://tuexam.edu.np",
+    "url": "https://exam.tu.edu.np",
     "category": "education",
     "description": "TU exam forms, results, and admit card services"
   },
@@ -590,7 +590,7 @@
   {
     "id": "bagmati-province",
     "name": "Bagmati Province (Chief Minister's Office)",
-    "url": "https://ocmcm.bagmati.gov.np",
+    "url": "https://bagmati.gov.np",
     "category": "province",
     "description": "Bagmati provincial government, policies, and services"
   },

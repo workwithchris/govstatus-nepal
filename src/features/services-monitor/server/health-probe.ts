@@ -1,3 +1,6 @@
+import crypto from "node:crypto";
+import http from "node:http";
+import https from "node:https";
 import { Agent, fetch as undiciFetch } from "undici";
 
 import seedData from "@/data/seed-services.json";
@@ -74,30 +77,106 @@ export const SERVE_ONLY =
 /** Logs the first probe failure once (diagnostic). */
 let probeErrorLogged = false;
 
+const SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION =
+  crypto.constants?.SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION ?? 0x00040000;
+
+// Explicit connect.timeout, headersTimeout, and bodyTimeout are critical:
+// Undici connector defaults connect.timeout to 10s, which silently aborts
+// slow .np portals (e.g. municipal servers taking 15-30s) despite PROBE_TIMEOUT_MS.
+// allowH2: false is required because several .np WAFs/Nginx proxies reset on h2.
+let primaryAgent: Agent | null = null;
+function getPrimaryAgent(): Agent | null {
+  if (!IS_NODE || primaryAgent) return primaryAgent;
+  try {
+    primaryAgent = new Agent({
+      allowH2: false,
+      connect: {
+        timeout: PROBE_TIMEOUT_MS,
+        secureOptions: SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION,
+      },
+      headersTimeout: PROBE_TIMEOUT_MS,
+      bodyTimeout: PROBE_TIMEOUT_MS,
+    });
+  } catch {
+    primaryAgent = null;
+  }
+  return primaryAgent;
+}
+
 let relaxedTlsAgent: Agent | null = null;
 function getRelaxedTlsAgent(): Agent | null {
   if (!IS_NODE || relaxedTlsAgent) return relaxedTlsAgent;
   try {
-    relaxedTlsAgent = new Agent({ connect: { rejectUnauthorized: false } });
+    relaxedTlsAgent = new Agent({
+      allowH2: false,
+      connect: {
+        timeout: PROBE_TIMEOUT_MS,
+        rejectUnauthorized: false,
+        secureOptions: SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION,
+      },
+      headersTimeout: PROBE_TIMEOUT_MS,
+      bodyTimeout: PROBE_TIMEOUT_MS,
+    });
   } catch {
     relaxedTlsAgent = null;
   }
   return relaxedTlsAgent;
 }
 
-function probeRequest(url: string, signal: AbortSignal, dispatcher?: Agent) {
+function probeRequest(url: string, dispatcher?: Agent) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
   const base = {
     headers: {
       "User-Agent": USER_AGENT,
       Accept: "text/html,application/xhtml+xml,*/*;q=0.8",
     },
     redirect: "follow" as const,
-    signal,
+    signal: controller.signal,
   };
-  // The `undici` package's fetch implementation doesn't work on workerd
-  // (Node compat layer), so primary probes use the platform fetch. The
-  // undici dispatcher is only used for the Node-only relaxed-TLS retry.
-  return dispatcher ? undiciFetch(url, { ...base, dispatcher }) : fetch(url, base);
+  const agent = dispatcher ?? (IS_NODE ? getPrimaryAgent() ?? undefined : undefined);
+  const promise = agent ? undiciFetch(url, { ...base, dispatcher: agent }) : fetch(url, base);
+  return promise.finally(() => clearTimeout(timer));
+}
+
+/**
+ * Fallback probe using Node's native http/https modules. Immune to ALPN-rejecting
+ * legacy servers (e.g. Oracle WebLogic on OPCR or older Apache) where undici's
+ * forced ALPN extension causes ECONNRESET.
+ */
+function nativeProbeFallback(urlString: string): Promise<number | null> {
+  if (!IS_NODE) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    try {
+      const u = new URL(urlString);
+      const mod = u.protocol === "http:" ? http : https;
+      const req = mod.request(
+        u,
+        {
+          method: "GET",
+          headers: {
+            "User-Agent": USER_AGENT,
+            Accept: "text/html,application/xhtml+xml,*/*;q=0.8",
+          },
+          rejectUnauthorized: false,
+          secureOptions: SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION,
+          timeout: PROBE_TIMEOUT_MS,
+        },
+        (res) => {
+          res.resume();
+          resolve(res.statusCode ?? 200);
+        }
+      );
+      req.on("error", () => resolve(null));
+      req.on("timeout", () => {
+        req.destroy();
+        resolve(null);
+      });
+      req.end();
+    } catch {
+      resolve(null);
+    }
+  });
 }
 
 /**
@@ -121,41 +200,60 @@ interface ProbeResult {
 }
 
 /**
- * Non-blocking probe with an 8s AbortController cap.
+ * 3-tier resilient probe:
+ *  1. Primary undici probe (HTTP/1.1, browser UA, legacy TLS renegotiation)
+ *  2. Relaxed-TLS undici retry (tolerates self-signed / missing CA chain gaps)
+ *  3. Native node:https fallback (no ALPN extension, covers WebLogic/CentOS servers)
+ *
+ * Status classification:
  *  - operational: 200–399 and responded under 3500ms
- *  - degraded:    responded but slow (>3500ms) or 403 (WAF block)
+ *  - degraded:    responded but slow (>3500ms), 403 (WAF block), or 429 (rate limit)
  *  - down:        5xx, other 4xx, connection refused, or timeout
  */
 async function probeService(url: string): Promise<ProbeResult> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
   const startedAt = performance.now();
 
   try {
-    let res: Awaited<ReturnType<typeof probeRequest>>;
+    let res: Awaited<ReturnType<typeof probeRequest>> | undefined;
+    let httpStatus: number | null = null;
     try {
-      res = await probeRequest(url, controller.signal);
-    } catch (err) {
-      if (controller.signal.aborted) throw err;
+      res = await probeRequest(url);
+      httpStatus = res.status;
+    } catch {
       const relaxed = getRelaxedTlsAgent();
-      if (!relaxed) throw err;
-      res = await probeRequest(url, controller.signal, relaxed);
+      if (relaxed) {
+        try {
+          res = await probeRequest(url, relaxed);
+          httpStatus = res.status;
+        } catch {
+          // Native fallback for legacy servers that reject ALPN
+          httpStatus = await nativeProbeFallback(url);
+        }
+      } else {
+        httpStatus = await nativeProbeFallback(url);
+      }
     }
-    await drainBody(res);
+    if (res) await drainBody(res);
     const responseTime = Math.round(performance.now() - startedAt);
 
-    if (res.status >= 200 && res.status < 400) {
+    if (httpStatus !== null && httpStatus >= 200 && httpStatus < 400) {
       return {
         status: responseTime > SLOW_THRESHOLD_MS ? "degraded" : "operational",
         responseTime,
-        httpStatus: res.status,
+        httpStatus,
       };
     }
-    // 403 usually means a WAF/bot filter, not a real outage.
+    if (httpStatus === 403 || httpStatus === 429) {
+      return {
+        status: "degraded",
+        responseTime,
+        httpStatus,
+      };
+    }
     return {
-      status: res.status === 403 ? "degraded" : "down",
-      responseTime,
-      httpStatus: res.status,
+      status: "down",
+      responseTime: httpStatus !== null ? responseTime : null,
+      httpStatus,
     };
   } catch (err) {
     if (!probeErrorLogged) {
@@ -168,8 +266,6 @@ async function probeService(url: string): Promise<ProbeResult> {
       );
     }
     return { status: "down", responseTime: null, httpStatus: null };
-  } finally {
-    clearTimeout(timeout);
   }
 }
 
@@ -204,7 +300,7 @@ async function probeCertExpiryMs(urlString: string): Promise<number | null> {
       const timer = setTimeout(() => {
         socket.destroy();
         resolve(null);
-      }, 6000);
+      }, 15000);
       socket.once("secureConnect", () => {
         clearTimeout(timer);
         const cert = socket.getPeerCertificate();
@@ -666,30 +762,50 @@ async function runChecks(): Promise<HealthResponse> {
     }
   }
 
+/** Runs `fn` over `items` with at most `limit` concurrent calls. */
+async function mapLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await fn(items[index], index);
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, worker)
+  );
+  return results;
+}
+
   // Refresh due TLS certs in parallel with the HTTP probes (Node only).
-  const certResults = certsDue(seeds).map(async (service) => ({
+  const certPromises = mapLimit(certsDue(seeds), 15, async (service) => ({
     id: service.id,
     expiresMs: await probeCertExpiryMs(service.url),
   }));
 
-  const services = await Promise.all(
-    seeds.map(async (service) => {
-      const result = await checkService(
-        service,
-        checkedAt,
-        realHistory?.get(service.id)
-      );
-      const progress = currentProgress!;
-      progress.checked += 1;
-      if (result.status === "down") progress.down += 1;
-      if (result.status === "degraded") progress.degraded += 1;
-      progress.recent = [
-        { name: result.name, status: result.status },
-        ...progress.recent,
-      ].slice(0, 5);
-      return result;
-    })
-  );
+  const services = await mapLimit(seeds, 15, async (service) => {
+    const result = await checkService(
+      service,
+      checkedAt,
+      realHistory?.get(service.id)
+    );
+    const progress = currentProgress!;
+    progress.checked += 1;
+    if (result.status === "down") progress.down += 1;
+    if (result.status === "degraded") progress.degraded += 1;
+    progress.recent = [
+      { name: result.name, status: result.status },
+      ...progress.recent,
+    ].slice(0, 5);
+    return result;
+  });
+
+  const certResults = await certPromises;
 
   const certRefreshes = new Map<string, number>();
   for (const cert of await Promise.all(certResults)) {
@@ -808,11 +924,12 @@ export function probeNow(): Promise<HealthResponse> {
  * the database is genuinely empty (first run before any cron tick).
  */
 export function getServicesHealth(): Promise<HealthResponse> {
+  const cachedAge = cached ? Date.now() - cached.at : Infinity;
+
   if (SERVE_ONLY) {
     // Serve-only worker: prefer the D1 snapshot (written by the Nepal-vantage
     // probe) and refresh the module cache on a TTL, so a one-off fallback
     // probe (empty DB first-run) can never pin foreign-vantage data forever.
-    const cachedAge = cached ? Date.now() - cached.at : Infinity;
     if (cached && cachedAge < SNAPSHOT_TTL_MS) {
       return Promise.resolve(cached.data);
     }
@@ -826,11 +943,20 @@ export function getServicesHealth(): Promise<HealthResponse> {
     });
   }
 
-  if (cached) return Promise.resolve(cached.data);
+  // Node runtime (local dev or self-hosted probe node)
+  if (cached && cachedAge < SNAPSHOT_TTL_MS) {
+    return Promise.resolve(cached.data);
+  }
   return getLastKnownFromDb().then((snapshot) => {
     if (snapshot) {
       cached = { data: snapshot, at: Date.now() };
       return snapshot;
+    }
+    // Stale-while-revalidate: if we have existing cached data, return it immediately so
+    // users never experience a 30s-40s delay waiting for 92 probes, and refresh in the background.
+    if (cached) {
+      void probeNow();
+      return cached.data;
     }
     return probeNow();
   });

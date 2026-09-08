@@ -1,0 +1,1343 @@
+{
+  "checkedAt": "2026-09-08T17:45:57.723Z",
+  "directSummary": {
+    "total": 92,
+    "operational": 78,
+    "degraded": 12,
+    "down": 2
+  },
+  "apiSummary": {
+    "total": 92,
+    "operational": 38,
+    "degraded": 4,
+    "down": 50,
+    "averageResponseTime": null,
+    "overallStatus": "outage"
+  },
+  "matches": 42,
+  "total": 92,
+  "differences": [
+    {
+      "id": "e-passport",
+      "name": "Department of Passports (e-Passport)",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 291
+    },
+    {
+      "id": "dotm-license",
+      "name": "Department of Transport Management (License)",
+      "directStatus": "degraded",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 7094
+    },
+    {
+      "id": "donidcr",
+      "name": "National ID & Civil Registration (DoNIDCR)",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 3094
+    },
+    {
+      "id": "customs",
+      "name": "Department of Customs (ASYCUDA)",
+      "directStatus": "degraded",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 7099
+    },
+    {
+      "id": "ocr",
+      "name": "Office of Company Registrar",
+      "directStatus": "degraded",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 7130
+    },
+    {
+      "id": "ppmo",
+      "name": "Public Procurement Portal (e-GP PPMO)",
+      "directStatus": "operational",
+      "apiStatus": "degraded",
+      "directHttp": 200,
+      "elapsed": 103
+    },
+    {
+      "id": "opmcm",
+      "name": "Prime Minister & Council of Ministers (OPMCM)",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 3140
+    },
+    {
+      "id": "mof",
+      "name": "Ministry of Finance",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 3130
+    },
+    {
+      "id": "mocit",
+      "name": "Ministry of Communication & Information Technology",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 3214
+    },
+    {
+      "id": "lmc",
+      "name": "Lalitpur Metropolitan City",
+      "directStatus": "degraded",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 45505
+    },
+    {
+      "id": "dofe",
+      "name": "Department of Foreign Employment",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 3237
+    },
+    {
+      "id": "nepal-police",
+      "name": "Nepal Police",
+      "directStatus": "degraded",
+      "apiStatus": "operational",
+      "directHttp": 200,
+      "elapsed": 8641
+    },
+    {
+      "id": "mofa",
+      "name": "Ministry of Foreign Affairs",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 3063
+    },
+    {
+      "id": "mohp",
+      "name": "Ministry of Health & Population",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 3052
+    },
+    {
+      "id": "moald",
+      "name": "Ministry of Agriculture & Livestock Development",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 3074
+    },
+    {
+      "id": "npc",
+      "name": "National Planning Commission",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 3096
+    },
+    {
+      "id": "biratnagar",
+      "name": "Biratnagar Metropolitan City",
+      "directStatus": "degraded",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 15278
+    },
+    {
+      "id": "consular-attestation",
+      "name": "Department of Consular Services",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 57
+    },
+    {
+      "id": "tsc",
+      "name": "Teacher Service Commission",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 48
+    },
+    {
+      "id": "mopit",
+      "name": "Ministry of Physical Infrastructure & Transport",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 49
+    },
+    {
+      "id": "moewri",
+      "name": "Ministry of Energy, Water Resources & Irrigation",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 58
+    },
+    {
+      "id": "moest",
+      "name": "Ministry of Education, Science & Technology",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 58
+    },
+    {
+      "id": "moics",
+      "name": "Ministry of Industry, Commerce & Supplies",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 53
+    },
+    {
+      "id": "mofe",
+      "name": "Ministry of Forests & Environment",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 59
+    },
+    {
+      "id": "moless",
+      "name": "Ministry of Labour, Employment & Social Security",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 82
+    },
+    {
+      "id": "moctca",
+      "name": "Ministry of Culture, Tourism & Civil Aviation",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 65
+    },
+    {
+      "id": "moud",
+      "name": "Ministry of Urban Development",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 83
+    },
+    {
+      "id": "mows",
+      "name": "Ministry of Water Supply",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 175
+    },
+    {
+      "id": "mod",
+      "name": "Ministry of Defence",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 95
+    },
+    {
+      "id": "mowcsc",
+      "name": "Ministry of Women, Children & Senior Citizens",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 49
+    },
+    {
+      "id": "moys",
+      "name": "Ministry of Youth & Sports",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 55
+    },
+    {
+      "id": "molcpa",
+      "name": "Ministry of Land Management, Cooperatives & Poverty Alleviation",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 60
+    },
+    {
+      "id": "ird-main",
+      "name": "Inland Revenue Department (IRD)",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 66
+    },
+    {
+      "id": "fcgo",
+      "name": "Financial Comptroller General Office (FCGO)",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 114
+    },
+    {
+      "id": "dri",
+      "name": "Department of Revenue Investigation (DRI)",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 53
+    },
+    {
+      "id": "doc",
+      "name": "Department of Commerce, Supplies & Consumer Protection",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 61
+    },
+    {
+      "id": "dhm-telemetry",
+      "name": "Real-Time River Telemetry",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 55
+    },
+    {
+      "id": "railways",
+      "name": "Department of Railways",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 55
+    },
+    {
+      "id": "nta",
+      "name": "Nepal Telecommunications Authority (NTA)",
+      "directStatus": "degraded",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 10684
+    },
+    {
+      "id": "survey-dos",
+      "name": "Survey Department (Napi Bibhag)",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 45
+    },
+    {
+      "id": "rajpatra",
+      "name": "Nepal Printing Office (Rajpatra)",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 56
+    },
+    {
+      "id": "tu-exam",
+      "name": "TU Examination Controller (OCE)",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 692
+    },
+    {
+      "id": "ugc",
+      "name": "University Grants Commission (UGC)",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 55
+    },
+    {
+      "id": "koshi-province",
+      "name": "Koshi Province (Chief Minister's Office)",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 41
+    },
+    {
+      "id": "madhesh-province",
+      "name": "Madhesh Province (Chief Minister's Office)",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 50
+    },
+    {
+      "id": "bagmati-province",
+      "name": "Bagmati Province (Chief Minister's Office)",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 61
+    },
+    {
+      "id": "karnali-province",
+      "name": "Karnali Province (Chief Minister's Office)",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 39
+    },
+    {
+      "id": "sudurpashchim-province",
+      "name": "Sudurpashchim Province (Chief Minister's Office)",
+      "directStatus": "operational",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 47
+    },
+    {
+      "id": "bharatpur",
+      "name": "Bharatpur Metropolitan City",
+      "directStatus": "degraded",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 17184
+    },
+    {
+      "id": "birgunj",
+      "name": "Birgunj Metropolitan City",
+      "directStatus": "degraded",
+      "apiStatus": "down",
+      "directHttp": 200,
+      "elapsed": 60775
+    }
+  ],
+  "directResults": [
+    {
+      "id": "e-passport",
+      "name": "Department of Passports (e-Passport)",
+      "url": "https://nepalpassport.gov.np",
+      "category": "citizen",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 291,
+      "method": "primary"
+    },
+    {
+      "id": "dotm-license",
+      "name": "Department of Transport Management (License)",
+      "url": "https://dotm.gov.np",
+      "category": "citizen",
+      "directStatus": "degraded",
+      "httpStatus": 200,
+      "elapsed": 7094,
+      "method": "primary"
+    },
+    {
+      "id": "nagarik-app",
+      "name": "Nagarik App Portal",
+      "url": "https://nagarikapp.gov.np",
+      "category": "citizen",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 61,
+      "method": "primary"
+    },
+    {
+      "id": "psc-loksewa",
+      "name": "Public Service Commission (Lok Sewa Aayog)",
+      "url": "https://psc.gov.np",
+      "category": "citizen",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 82,
+      "method": "primary"
+    },
+    {
+      "id": "donidcr",
+      "name": "National ID & Civil Registration (DoNIDCR)",
+      "url": "https://donidcr.gov.np",
+      "category": "citizen",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 3094,
+      "method": "relaxed-tls"
+    },
+    {
+      "id": "immigration",
+      "name": "Department of Immigration",
+      "url": "https://immigration.gov.np",
+      "category": "citizen",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 468,
+      "method": "relaxed-tls"
+    },
+    {
+      "id": "ird",
+      "name": "Inland Revenue Department (Taxpayer Portal)",
+      "url": "https://taxpayerportal.ird.gov.np",
+      "category": "finance",
+      "directStatus": "degraded",
+      "httpStatus": 403,
+      "elapsed": 70,
+      "method": "primary"
+    },
+    {
+      "id": "nepse",
+      "name": "Nepal Stock Exchange (NEPSE)",
+      "url": "https://nepalstock.com.np",
+      "category": "finance",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 72,
+      "method": "primary"
+    },
+    {
+      "id": "nrb",
+      "name": "Nepal Rastra Bank",
+      "url": "https://nrb.org.np",
+      "category": "finance",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 220,
+      "method": "primary"
+    },
+    {
+      "id": "customs",
+      "name": "Department of Customs (ASYCUDA)",
+      "url": "https://customs.gov.np",
+      "category": "finance",
+      "directStatus": "degraded",
+      "httpStatus": 200,
+      "elapsed": 7099,
+      "method": "relaxed-tls"
+    },
+    {
+      "id": "ocr",
+      "name": "Office of Company Registrar",
+      "url": "https://ocr.gov.np",
+      "category": "business",
+      "directStatus": "degraded",
+      "httpStatus": 200,
+      "elapsed": 7130,
+      "method": "primary"
+    },
+    {
+      "id": "ppmo",
+      "name": "Public Procurement Portal (e-GP PPMO)",
+      "url": "https://bolpatra.gov.np",
+      "category": "business",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 103,
+      "method": "relaxed-tls"
+    },
+    {
+      "id": "nepal-portal",
+      "name": "Nepal Government National Portal",
+      "url": "https://nepal.gov.np",
+      "category": "core",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 76,
+      "method": "primary"
+    },
+    {
+      "id": "opmcm",
+      "name": "Prime Minister & Council of Ministers (OPMCM)",
+      "url": "https://opmcm.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 3140,
+      "method": "primary"
+    },
+    {
+      "id": "moha",
+      "name": "Ministry of Home Affairs",
+      "url": "https://moha.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 207,
+      "method": "primary"
+    },
+    {
+      "id": "mof",
+      "name": "Ministry of Finance",
+      "url": "https://mof.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 3130,
+      "method": "relaxed-tls"
+    },
+    {
+      "id": "mocit",
+      "name": "Ministry of Communication & Information Technology",
+      "url": "https://mocit.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 3214,
+      "method": "relaxed-tls"
+    },
+    {
+      "id": "kmc",
+      "name": "Kathmandu Metropolitan City",
+      "url": "https://kathmandu.gov.np",
+      "category": "palika",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 460,
+      "method": "primary"
+    },
+    {
+      "id": "lmc",
+      "name": "Lalitpur Metropolitan City",
+      "url": "https://lalitpurmun.gov.np",
+      "category": "palika",
+      "directStatus": "degraded",
+      "httpStatus": 200,
+      "elapsed": 45505,
+      "method": "relaxed-tls"
+    },
+    {
+      "id": "supreme-court",
+      "name": "Supreme Court of Nepal",
+      "url": "https://supremecourt.gov.np",
+      "category": "citizen",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 148,
+      "method": "primary"
+    },
+    {
+      "id": "dofe",
+      "name": "Department of Foreign Employment",
+      "url": "https://dofe.gov.np",
+      "category": "citizen",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 3237,
+      "method": "primary"
+    },
+    {
+      "id": "neb",
+      "name": "National Examination Board (NEB)",
+      "url": "https://neb.gov.np",
+      "category": "citizen",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 1755,
+      "method": "primary"
+    },
+    {
+      "id": "nepal-police",
+      "name": "Nepal Police",
+      "url": "https://nepalpolice.gov.np",
+      "category": "citizen",
+      "directStatus": "degraded",
+      "httpStatus": 200,
+      "elapsed": 8641,
+      "method": "relaxed-tls"
+    },
+    {
+      "id": "epf",
+      "name": "Employees Provident Fund",
+      "url": "https://epf.org.np",
+      "category": "finance",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 274,
+      "method": "primary"
+    },
+    {
+      "id": "ssf",
+      "name": "Social Security Fund",
+      "url": "https://ssf.gov.np",
+      "category": "finance",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 120,
+      "method": "primary"
+    },
+    {
+      "id": "sebon",
+      "name": "Securities Board of Nepal (SEBON)",
+      "url": "https://sebon.gov.np",
+      "category": "finance",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 970,
+      "method": "primary"
+    },
+    {
+      "id": "mofa",
+      "name": "Ministry of Foreign Affairs",
+      "url": "https://mofa.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 3063,
+      "method": "primary"
+    },
+    {
+      "id": "mohp",
+      "name": "Ministry of Health & Population",
+      "url": "https://mohp.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 3052,
+      "method": "primary"
+    },
+    {
+      "id": "moald",
+      "name": "Ministry of Agriculture & Livestock Development",
+      "url": "https://moald.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 3074,
+      "method": "primary"
+    },
+    {
+      "id": "election-commission",
+      "name": "Election Commission Nepal",
+      "url": "https://election.gov.np",
+      "category": "core",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 86,
+      "method": "relaxed-tls"
+    },
+    {
+      "id": "npc",
+      "name": "National Planning Commission",
+      "url": "https://npc.gov.np",
+      "category": "core",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 3096,
+      "method": "primary"
+    },
+    {
+      "id": "biratnagar",
+      "name": "Biratnagar Metropolitan City",
+      "url": "https://biratnagarmun.gov.np",
+      "category": "palika",
+      "directStatus": "degraded",
+      "httpStatus": 200,
+      "elapsed": 15278,
+      "method": "primary"
+    },
+    {
+      "id": "consular-attestation",
+      "name": "Department of Consular Services",
+      "url": "https://nepalconsular.gov.np",
+      "category": "citizen",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 57,
+      "method": "primary"
+    },
+    {
+      "id": "dolma-lrims",
+      "name": "Department of Land Management (LRIMS)",
+      "url": "https://dolma.gov.np",
+      "category": "citizen",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 434,
+      "method": "relaxed-tls"
+    },
+    {
+      "id": "dofe-feims",
+      "name": "Foreign Employment Information System (FEIMS)",
+      "url": "https://feims.dofe.gov.np",
+      "category": "citizen",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 858,
+      "method": "primary"
+    },
+    {
+      "id": "mec-nepal",
+      "name": "Medical Education Commission (MEC)",
+      "url": "https://mec.gov.np",
+      "category": "citizen",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 442,
+      "method": "relaxed-tls"
+    },
+    {
+      "id": "ciaa-nepal",
+      "name": "Commission for Investigation of Abuse of Authority (CIAA)",
+      "url": "https://ciaa.gov.np",
+      "category": "core",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 639,
+      "method": "primary"
+    },
+    {
+      "id": "nepal-police-opcr",
+      "name": "Nepal Police Online Clearance (OPCR)",
+      "url": "https://opcr.nepalpolice.gov.np",
+      "category": "citizen",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 55,
+      "method": "primary"
+    },
+    {
+      "id": "president",
+      "name": "Office of the President",
+      "url": "https://president.gov.np",
+      "category": "core",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 1746,
+      "method": "relaxed-tls"
+    },
+    {
+      "id": "parliament",
+      "name": "Federal Parliament of Nepal",
+      "url": "https://parliament.gov.np",
+      "category": "core",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 145,
+      "method": "relaxed-tls"
+    },
+    {
+      "id": "hr-parliament",
+      "name": "House of Representatives",
+      "url": "https://hr.parliament.gov.np",
+      "category": "core",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 265,
+      "method": "relaxed-tls"
+    },
+    {
+      "id": "na-parliament",
+      "name": "National Assembly",
+      "url": "https://na.parliament.gov.np",
+      "category": "core",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 262,
+      "method": "relaxed-tls"
+    },
+    {
+      "id": "oag",
+      "name": "Office of the Auditor General",
+      "url": "https://oag.gov.np",
+      "category": "core",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 64,
+      "method": "primary"
+    },
+    {
+      "id": "ag",
+      "name": "Office of the Attorney General",
+      "url": "https://ag.gov.np",
+      "category": "core",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 784,
+      "method": "primary"
+    },
+    {
+      "id": "nhrc",
+      "name": "National Human Rights Commission",
+      "url": "https://nhrcnepal.org",
+      "category": "core",
+      "directStatus": "degraded",
+      "httpStatus": 200,
+      "elapsed": 4707,
+      "method": "primary"
+    },
+    {
+      "id": "tsc",
+      "name": "Teacher Service Commission",
+      "url": "https://tsc.gov.np",
+      "category": "citizen",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 48,
+      "method": "primary"
+    },
+    {
+      "id": "mopit",
+      "name": "Ministry of Physical Infrastructure & Transport",
+      "url": "https://mopit.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 49,
+      "method": "primary"
+    },
+    {
+      "id": "moewri",
+      "name": "Ministry of Energy, Water Resources & Irrigation",
+      "url": "https://moewri.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 58,
+      "method": "primary"
+    },
+    {
+      "id": "moest",
+      "name": "Ministry of Education, Science & Technology",
+      "url": "https://moest.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 58,
+      "method": "primary"
+    },
+    {
+      "id": "mofaga",
+      "name": "Ministry of Federal Affairs & General Administration",
+      "url": "https://mofaga.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 35,
+      "method": "primary"
+    },
+    {
+      "id": "moics",
+      "name": "Ministry of Industry, Commerce & Supplies",
+      "url": "https://moics.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 53,
+      "method": "primary"
+    },
+    {
+      "id": "moljpa",
+      "name": "Ministry of Law, Justice & Parliamentary Affairs",
+      "url": "https://moljpa.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 170,
+      "method": "relaxed-tls"
+    },
+    {
+      "id": "mofe",
+      "name": "Ministry of Forests & Environment",
+      "url": "https://mofe.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 59,
+      "method": "primary"
+    },
+    {
+      "id": "moless",
+      "name": "Ministry of Labour, Employment & Social Security",
+      "url": "https://moless.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 82,
+      "method": "relaxed-tls"
+    },
+    {
+      "id": "moctca",
+      "name": "Ministry of Culture, Tourism & Civil Aviation",
+      "url": "https://tourism.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 65,
+      "method": "primary"
+    },
+    {
+      "id": "moud",
+      "name": "Ministry of Urban Development",
+      "url": "https://moud.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 83,
+      "method": "relaxed-tls"
+    },
+    {
+      "id": "mows",
+      "name": "Ministry of Water Supply",
+      "url": "https://mows.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 175,
+      "method": "primary"
+    },
+    {
+      "id": "mod",
+      "name": "Ministry of Defence",
+      "url": "https://mod.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 95,
+      "method": "primary"
+    },
+    {
+      "id": "mowcsc",
+      "name": "Ministry of Women, Children & Senior Citizens",
+      "url": "https://mowcsc.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 49,
+      "method": "primary"
+    },
+    {
+      "id": "moys",
+      "name": "Ministry of Youth & Sports",
+      "url": "https://moys.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 55,
+      "method": "primary"
+    },
+    {
+      "id": "molcpa",
+      "name": "Ministry of Land Management, Cooperatives & Poverty Alleviation",
+      "url": "https://molcpa.gov.np",
+      "category": "ministry",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 60,
+      "method": "primary"
+    },
+    {
+      "id": "ird-main",
+      "name": "Inland Revenue Department (IRD)",
+      "url": "https://ird.gov.np",
+      "category": "finance",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 66,
+      "method": "primary"
+    },
+    {
+      "id": "fcgo",
+      "name": "Financial Comptroller General Office (FCGO)",
+      "url": "https://fcgo.gov.np",
+      "category": "finance",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 114,
+      "method": "primary"
+    },
+    {
+      "id": "dri",
+      "name": "Department of Revenue Investigation (DRI)",
+      "url": "https://dri.gov.np",
+      "category": "finance",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 53,
+      "method": "primary"
+    },
+    {
+      "id": "doc",
+      "name": "Department of Commerce, Supplies & Consumer Protection",
+      "url": "https://doc.gov.np",
+      "category": "business",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 61,
+      "method": "primary"
+    },
+    {
+      "id": "doind",
+      "name": "Department of Industry",
+      "url": "https://doind.gov.np",
+      "category": "business",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 836,
+      "method": "primary"
+    },
+    {
+      "id": "cit",
+      "name": "Citizen Investment Trust (CIT)",
+      "url": "https://nlk.org.np",
+      "category": "finance",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 85,
+      "method": "primary"
+    },
+    {
+      "id": "dhm",
+      "name": "Department of Hydrology & Meteorology",
+      "url": "https://dhm.gov.np",
+      "category": "infrastructure",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 1176,
+      "method": "primary"
+    },
+    {
+      "id": "dhm-telemetry",
+      "name": "Real-Time River Telemetry",
+      "url": "https://hydrology.gov.np",
+      "category": "infrastructure",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 55,
+      "method": "primary"
+    },
+    {
+      "id": "bipad",
+      "name": "BIPAD Disaster Portal",
+      "url": "https://bipadportal.gov.np",
+      "category": "infrastructure",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 37,
+      "method": "primary"
+    },
+    {
+      "id": "nea",
+      "name": "Nepal Electricity Authority (NEA)",
+      "url": "https://nea.org.np",
+      "category": "infrastructure",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 65,
+      "method": "primary"
+    },
+    {
+      "id": "dor",
+      "name": "Department of Roads (DoR)",
+      "url": "https://dor.gov.np",
+      "category": "infrastructure",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 2264,
+      "method": "relaxed-tls"
+    },
+    {
+      "id": "railways",
+      "name": "Department of Railways",
+      "url": "https://dorw.gov.np",
+      "category": "infrastructure",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 55,
+      "method": "primary"
+    },
+    {
+      "id": "nta",
+      "name": "Nepal Telecommunications Authority (NTA)",
+      "url": "https://nta.gov.np",
+      "category": "infrastructure",
+      "directStatus": "degraded",
+      "httpStatus": 200,
+      "elapsed": 10684,
+      "method": "primary"
+    },
+    {
+      "id": "nitc",
+      "name": "National Information Technology Center (NITC)",
+      "url": "https://nitc.gov.np",
+      "category": "infrastructure",
+      "directStatus": "down",
+      "httpStatus": null,
+      "elapsed": 63106,
+      "method": "failed"
+    },
+    {
+      "id": "survey-dos",
+      "name": "Survey Department (Napi Bibhag)",
+      "url": "https://dos.gov.np",
+      "category": "infrastructure",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 45,
+      "method": "primary"
+    },
+    {
+      "id": "dmgnepal",
+      "name": "Department of Mines & Geology",
+      "url": "https://dmgnepal.gov.np",
+      "category": "infrastructure",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 1977,
+      "method": "primary"
+    },
+    {
+      "id": "rajpatra",
+      "name": "Nepal Printing Office (Rajpatra)",
+      "url": "https://dop.gov.np",
+      "category": "infrastructure",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 56,
+      "method": "primary"
+    },
+    {
+      "id": "tu",
+      "name": "Tribhuvan University (TU)",
+      "url": "https://tu.edu.np",
+      "category": "education",
+      "directStatus": "degraded",
+      "httpStatus": 200,
+      "elapsed": 4163,
+      "method": "primary"
+    },
+    {
+      "id": "tu-exam",
+      "name": "TU Examination Controller (OCE)",
+      "url": "https://exam.tu.edu.np",
+      "category": "education",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 692,
+      "method": "primary"
+    },
+    {
+      "id": "ugc",
+      "name": "University Grants Commission (UGC)",
+      "url": "https://ugcnepal.edu.np",
+      "category": "education",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 55,
+      "method": "primary"
+    },
+    {
+      "id": "ctevt",
+      "name": "Council for Technical Education & Vocational Training (CTEVT)",
+      "url": "https://ctevt.org.np",
+      "category": "education",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 251,
+      "method": "primary"
+    },
+    {
+      "id": "koshi-province",
+      "name": "Koshi Province (Chief Minister's Office)",
+      "url": "https://ocmcm.koshi.gov.np",
+      "category": "province",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 41,
+      "method": "primary"
+    },
+    {
+      "id": "madhesh-province",
+      "name": "Madhesh Province (Chief Minister's Office)",
+      "url": "https://ocmcm.madhesh.gov.np",
+      "category": "province",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 50,
+      "method": "primary"
+    },
+    {
+      "id": "bagmati-province",
+      "name": "Bagmati Province (Chief Minister's Office)",
+      "url": "https://bagmati.gov.np",
+      "category": "province",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 61,
+      "method": "relaxed-tls"
+    },
+    {
+      "id": "gandaki-province",
+      "name": "Gandaki Province (Chief Minister's Office)",
+      "url": "https://ocmcm.gandaki.gov.np",
+      "category": "province",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 258,
+      "method": "primary"
+    },
+    {
+      "id": "lumbini-province",
+      "name": "Lumbini Province (Chief Minister's Office)",
+      "url": "https://ocmcm.lumbini.gov.np",
+      "category": "province",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 582,
+      "method": "primary"
+    },
+    {
+      "id": "karnali-province",
+      "name": "Karnali Province (Chief Minister's Office)",
+      "url": "https://ocmcm.karnali.gov.np",
+      "category": "province",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 39,
+      "method": "primary"
+    },
+    {
+      "id": "sudurpashchim-province",
+      "name": "Sudurpashchim Province (Chief Minister's Office)",
+      "url": "https://ocmcm.sudurpashchim.gov.np",
+      "category": "province",
+      "directStatus": "operational",
+      "httpStatus": 200,
+      "elapsed": 47,
+      "method": "primary"
+    },
+    {
+      "id": "pokhara",
+      "name": "Pokhara Metropolitan City",
+      "url": "https://pokharamun.gov.np",
+      "category": "palika",
+      "directStatus": "down",
+      "httpStatus": null,
+      "elapsed": 63102,
+      "method": "failed"
+    },
+    {
+      "id": "bharatpur",
+      "name": "Bharatpur Metropolitan City",
+      "url": "https://bharatpurmun.gov.np",
+      "category": "palika",
+      "directStatus": "degraded",
+      "httpStatus": 200,
+      "elapsed": 17184,
+      "method": "primary"
+    },
+    {
+      "id": "birgunj",
+      "name": "Birgunj Metropolitan City",
+      "url": "https://birgunjmun.gov.np",
+      "category": "palika",
+      "directStatus": "degraded",
+      "httpStatus": 200,
+      "elapsed": 60775,
+      "method": "native-http"
+    }
+  ]
+}
