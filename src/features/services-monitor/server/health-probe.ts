@@ -4,7 +4,7 @@ import https from "node:https";
 import { Agent, fetch as undiciFetch } from "undici";
 
 import seedData from "@/data/seed-services.json";
-import { d1Batch, d1Config, d1Query } from "@/lib/d1";
+import { d1Batch, d1Config, d1Query, isD1Available } from "@/lib/d1";
 import {
   healthResponseSchema,
   seedServiceSchema,
@@ -738,8 +738,9 @@ async function runChecks(): Promise<HealthResponse> {
   // yields grey "no data" slots, not fabricated bars. History only changes
   // on persist, so between persist cycles we reuse the last-loaded index —
   // this is what keeps D1 reads within the free-tier limit.
+  const d1Available = !!d1Config || (await isD1Available());
   const shouldPersist =
-    !!d1Config &&
+    d1Available &&
     !SERVE_ONLY &&
     checkedAtMs - lastPersistAt >= PERSIST_INTERVAL_MS;
 
@@ -758,7 +759,7 @@ async function runChecks(): Promise<HealthResponse> {
 
   // Current per-service state (transition compare + persisted certs).
   let prevMeta: MetaIndex | null = null;
-  if (d1Config) {
+  if (d1Available) {
     try {
       prevMeta = await loadServiceMeta();
     } catch (err) {
@@ -861,7 +862,8 @@ async function mapLimit<T, R>(
  * yet hold a meta row for every service.
  */
 async function getLastKnownFromDb(): Promise<HealthResponse | null> {
-  if (!d1Config) return null;
+  const d1Available = !!d1Config || (await isD1Available());
+  if (!d1Available) return null;
   const seeds = seedServiceSchema.array().parse(seedData);
   const now = Date.now();
   const checkedAt = new Date(now).toISOString();

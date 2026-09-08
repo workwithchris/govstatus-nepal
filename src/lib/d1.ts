@@ -1,13 +1,18 @@
 import { z } from "zod";
+import type { D1Database } from "@cloudflare/workers-types";
 
 /**
- * Minimal Cloudflare D1 REST client.
- *
- * Works from any runtime (Node, OpenNext/Workers) without a native binding.
- * When env vars are missing the app degrades gracefully: status history is
- * simulated instead of persisted. Create an API token with "D1: Edit" at
- * https://dash.cloudflare.com/profile/api-tokens
+ * Cloudflare D1 client.
+ * Supports:
+ *  1. Native D1 binding via Cloudflare Workers (`DB` binding in wrangler.jsonc)
+ *  2. REST API client (fallback for local Node.js and standalone probe scripts)
  */
+
+interface D1Env {
+  accountId: string;
+  databaseId: string;
+  apiToken: string;
+}
 
 const d1EnvSchema = z.object({
   accountId: z.string().min(1),
@@ -15,17 +20,57 @@ const d1EnvSchema = z.object({
   apiToken: z.string().min(1),
 });
 
-const parsed = d1EnvSchema.safeParse({
-  accountId: process.env.CLOUDFLARE_ACCOUNT_ID,
-  databaseId: process.env.CLOUDFLARE_D1_DATABASE_ID,
-  apiToken: process.env.CLOUDFLARE_API_TOKEN,
-});
-
-export const d1Config: z.infer<typeof d1EnvSchema> | null =
-  parsed.success &&
-  !parsed.data.apiToken.startsWith("replace-me")
+function getRestConfig(): D1Env | null {
+  const parsed = d1EnvSchema.safeParse({
+    accountId: process.env.CLOUDFLARE_ACCOUNT_ID,
+    databaseId: process.env.CLOUDFLARE_D1_DATABASE_ID,
+    apiToken: process.env.CLOUDFLARE_API_TOKEN,
+  });
+  return parsed.success && !parsed.data.apiToken.startsWith("replace-me")
     ? parsed.data
     : null;
+}
+
+export const d1Config: D1Env | null = getRestConfig();
+
+async function getNativeDb(): Promise<D1Database | null> {
+  // 1. Try globalThis.DB (standard workerd global binding)
+  if (
+    typeof (globalThis as unknown as { DB?: D1Database }).DB !== "undefined" &&
+    typeof (globalThis as unknown as { DB?: { prepare?: unknown } }).DB?.prepare === "function"
+  ) {
+    return (globalThis as unknown as { DB: D1Database }).DB;
+  }
+
+  // 2. Try OpenNext Cloudflare Context
+  try {
+    const { getCloudflareContext } = await import("@opennextjs/cloudflare");
+    const ctx = await getCloudflareContext({ async: true });
+    const db = (ctx?.env as unknown as { DB?: D1Database })?.DB;
+    if (db && typeof db.prepare === "function") {
+      return db;
+    }
+  } catch {
+    /* not in OpenNext Cloudflare worker */
+  }
+
+  // 3. Try process.env.DB
+  if (
+    typeof (process.env as unknown as { DB?: D1Database }).DB !== "undefined" &&
+    typeof (process.env as unknown as { DB?: { prepare?: unknown } }).DB?.prepare === "function"
+  ) {
+    return (process.env as unknown as { DB: D1Database }).DB;
+  }
+
+  return null;
+}
+
+/** Check if D1 is reachable (either natively or via REST config). */
+export async function isD1Available(): Promise<boolean> {
+  if (getRestConfig()) return true;
+  const native = await getNativeDb();
+  return native !== null;
+}
 
 interface D1QueryResult<T> {
   success: boolean;
@@ -37,14 +82,28 @@ export async function d1Query<T>(
   sql: string,
   params: unknown[] = []
 ): Promise<T[]> {
-  if (!d1Config) return [];
+  // 1. Native D1 binding (fast, tokenless on Workers)
+  try {
+    const native = await getNativeDb();
+    if (native) {
+      const stmt = native.prepare(sql).bind(...params);
+      const { results } = await stmt.all();
+      return (results ?? []) as T[];
+    }
+  } catch (err) {
+    console.warn("[d1] native query failed, checking REST fallback:", err);
+  }
+
+  // 2. REST API fallback
+  const cfg = getRestConfig();
+  if (!cfg) return [];
 
   const res = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${d1Config.accountId}/d1/database/${d1Config.databaseId}/query`,
+    `https://api.cloudflare.com/client/v4/accounts/${cfg.accountId}/d1/database/${cfg.databaseId}/query`,
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${d1Config.apiToken}`,
+        Authorization: `Bearer ${cfg.apiToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ sql, params }),
@@ -73,14 +132,30 @@ export async function d1Query<T>(
  * Executes multiple statements in one round trip (atomic transaction).
  */
 export async function d1Batch(statements: { sql: string; params: unknown[] }[]): Promise<void> {
-  if (!d1Config || statements.length === 0) return;
+  if (statements.length === 0) return;
+
+  // 1. Native D1 binding
+  try {
+    const native = await getNativeDb();
+    if (native) {
+      const stmts = statements.map((s) => native.prepare(s.sql).bind(...s.params));
+      await native.batch(stmts);
+      return;
+    }
+  } catch (err) {
+    console.warn("[d1] native batch failed, checking REST fallback:", err);
+  }
+
+  // 2. REST API fallback
+  const cfg = getRestConfig();
+  if (!cfg) return;
 
   const res = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${d1Config.accountId}/d1/database/${d1Config.databaseId}/query`,
+    `https://api.cloudflare.com/client/v4/accounts/${cfg.accountId}/d1/database/${cfg.databaseId}/query`,
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${d1Config.apiToken}`,
+        Authorization: `Bearer ${cfg.apiToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ batch: statements }),
