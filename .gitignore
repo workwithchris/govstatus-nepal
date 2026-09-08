@@ -18,6 +18,9 @@
 /out/
 /.open-next/
 
+# wrangler local dev state (miniflare, logs)
+/.wrangler/
+
 # production
 /build
 

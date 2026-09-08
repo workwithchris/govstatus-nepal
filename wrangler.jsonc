@@ -4,7 +4,7 @@
   // WORKER_SELF_REFERENCE.service below must equal it, or deploy fails with
   // error 10143 (binding references a worker that doesn't exist).
   "name": "govstatus-nepal",
-  "main": ".open-next/worker.js",
+  "main": "./custom-worker.ts",
   "compatibility_date": "2025-06-01",
   "compatibility_flags": [
     // Node.js API for the probe engine (undici fetch, AbortSignal.timeout)
