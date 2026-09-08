@@ -1,0 +1,30 @@
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+/** Formats a response-time in milliseconds, e.g. `420 ms`. */
+export function formatLatency(ms: number | null): string {
+  if (ms === null) return "—";
+  return `${Math.round(ms)} ms`;
+}
+
+/** Formats an ISO timestamp as a relative label, e.g. `12s ago`. */
+export function formatTimeAgo(iso: string | null): string {
+  if (!iso) return "—";
+  const seconds = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  return `${Math.floor(minutes / 60)}h ago`;
+}
+
+/** Formats an ISO timestamp as an hour label, e.g. `14:00`. */
+export function formatHour(iso: string): string {
+  return new Date(iso).toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}

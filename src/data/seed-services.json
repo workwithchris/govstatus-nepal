@@ -1,0 +1,268 @@
+[
+  {
+    "id": "e-passport",
+    "name": "Department of Passports (e-Passport)",
+    "url": "https://emrtds.nepalpassport.gov.np",
+    "category": "citizen",
+    "description": "Online passport pre-enrollment and appointment booking"
+  },
+  {
+    "id": "dotm-license",
+    "name": "Department of Transport Management (License)",
+    "url": "https://applydlnew.dotm.gov.np",
+    "category": "citizen",
+    "description": "Smart driving license online registration and renewals"
+  },
+  {
+    "id": "nagarik-app",
+    "name": "Nagarik App Portal",
+    "url": "https://nagarikapp.gov.np",
+    "category": "citizen",
+    "description": "Integrated digital governance citizen mobile service portal"
+  },
+  {
+    "id": "psc-loksewa",
+    "name": "Public Service Commission (Lok Sewa Aayog)",
+    "url": "https://psc.gov.np",
+    "category": "citizen",
+    "description": "Civil service job notices, exam results, and online applications"
+  },
+  {
+    "id": "donidcr",
+    "name": "National ID & Civil Registration (DoNIDCR)",
+    "url": "https://donidcr.gov.np",
+    "category": "citizen",
+    "description": "Rastriya Parichayapatra (NID) and vital event registration"
+  },
+  {
+    "id": "immigration",
+    "name": "Department of Immigration",
+    "url": "https://immigration.gov.np",
+    "category": "citizen",
+    "description": "Tourist visas, trekking permits, and travel advisories"
+  },
+  {
+    "id": "ird",
+    "name": "Inland Revenue Department (Taxpayer Portal)",
+    "url": "https://taxpayerportal.ird.gov.np",
+    "category": "finance",
+    "description": "PAN registration, VAT returns, and tax clearance certificates"
+  },
+  {
+    "id": "nepse",
+    "name": "Nepal Stock Exchange (NEPSE)",
+    "url": "https://nepalstock.com.np",
+    "category": "finance",
+    "description": "Live stock market trading, indices, and corporate disclosures"
+  },
+  {
+    "id": "nrb",
+    "name": "Nepal Rastra Bank",
+    "url": "https://nrb.org.np",
+    "category": "finance",
+    "description": "Central bank notices, foreign exchange rates, and monetary policy"
+  },
+  {
+    "id": "customs",
+    "name": "Department of Customs (ASYCUDA)",
+    "url": "https://customs.gov.np",
+    "category": "finance",
+    "description": "Tariff schedules, trade declarations, and customs clearance"
+  },
+  {
+    "id": "ocr",
+    "name": "Office of Company Registrar",
+    "url": "https://ocr.gov.np",
+    "category": "business",
+    "description": "Company registration, annual filings, and business records"
+  },
+  {
+    "id": "ppmo",
+    "name": "Public Procurement Portal (e-GP PPMO)",
+    "url": "https://bolpatra.gov.np",
+    "category": "business",
+    "description": "Government tender bids, procurement awards, and contractor notices"
+  },
+  {
+    "id": "nepal-portal",
+    "name": "Nepal Government National Portal",
+    "url": "https://nepal.gov.np",
+    "category": "core",
+    "description": "Apex government directory and ministry gateway"
+  },
+  {
+    "id": "opmcm",
+    "name": "Prime Minister & Council of Ministers (OPMCM)",
+    "url": "https://opmcm.gov.np",
+    "category": "ministry",
+    "description": "Cabinet decisions, executive directives, and Hello Sarkar"
+  },
+  {
+    "id": "moha",
+    "name": "Ministry of Home Affairs",
+    "url": "https://moha.gov.np",
+    "category": "ministry",
+    "description": "Internal security, disaster management, and district administration"
+  },
+  {
+    "id": "mof",
+    "name": "Ministry of Finance",
+    "url": "https://mof.gov.np",
+    "category": "ministry",
+    "description": "National budget, economic surveys, and fiscal reports"
+  },
+  {
+    "id": "mocit",
+    "name": "Ministry of Communication & Information Technology",
+    "url": "https://mocit.gov.np",
+    "category": "ministry",
+    "description": "Telecom policies, NITC oversight, and IT regulations"
+  },
+  {
+    "id": "kmc",
+    "name": "Kathmandu Metropolitan City",
+    "url": "https://kathmandu.gov.np",
+    "category": "palika",
+    "description": "Capital municipal citizen services, property tax, and ward notices"
+  },
+  {
+    "id": "lmc",
+    "name": "Lalitpur Metropolitan City",
+    "url": "https://lalitpur.gov.np",
+    "category": "palika",
+    "description": "Lalitpur municipal permits, building approvals, and local revenue"
+  },
+  {
+    "id": "supreme-court",
+    "name": "Supreme Court of Nepal",
+    "url": "https://supremecourt.gov.np",
+    "category": "citizen",
+    "description": "Cause lists, judgments, and case status of the apex judiciary"
+  },
+  {
+    "id": "dofe",
+    "name": "Department of Foreign Employment",
+    "url": "https://dofe.gov.np",
+    "category": "citizen",
+    "description": "Labour approval, pre-departure orientation, and migrant worker records"
+  },
+  {
+    "id": "neb",
+    "name": "National Examination Board (NEB)",
+    "url": "https://neb.gov.np",
+    "category": "citizen",
+    "description": "Grade 11–12 exam registration, results, and transcript services"
+  },
+  {
+    "id": "nepal-police",
+    "name": "Nepal Police",
+    "url": "https://nepalpolice.gov.np",
+    "category": "citizen",
+    "description": "Police clearance reports, crime notices, and citizen services"
+  },
+  {
+    "id": "epf",
+    "name": "Employees Provident Fund",
+    "url": "https://epf.org.np",
+    "category": "finance",
+    "description": "Contributor statements, balance inquiry, and provident fund withdrawals"
+  },
+  {
+    "id": "ssf",
+    "name": "Social Security Fund",
+    "url": "https://ssf.gov.np",
+    "category": "finance",
+    "description": "Contributor enrollment, contribution records, and social protection schemes"
+  },
+  {
+    "id": "sebon",
+    "name": "Securities Board of Nepal (SEBON)",
+    "url": "https://sebon.gov.np",
+    "category": "finance",
+    "description": "Capital market regulation, IPO approvals, and investor notices"
+  },
+  {
+    "id": "mofa",
+    "name": "Ministry of Foreign Affairs",
+    "url": "https://mofa.gov.np",
+    "category": "ministry",
+    "description": "Diplomatic notices, consular services, and travel advisories"
+  },
+  {
+    "id": "mohp",
+    "name": "Ministry of Health & Population",
+    "url": "https://mohp.gov.np",
+    "category": "ministry",
+    "description": "Public health notices, hospital directories, and health policies"
+  },
+  {
+    "id": "moald",
+    "name": "Ministry of Agriculture & Livestock Development",
+    "url": "https://moald.gov.np",
+    "category": "ministry",
+    "description": "Agriculture policies, subsidy programs, and farmer notices"
+  },
+  {
+    "id": "election-commission",
+    "name": "Election Commission Nepal",
+    "url": "https://election.gov.np",
+    "category": "core",
+    "description": "Voter registration, election results, and electoral roll lookup"
+  },
+  {
+    "id": "npc",
+    "name": "National Planning Commission",
+    "url": "https://npc.gov.np",
+    "category": "core",
+    "description": "National development plans, periodic plans, and progress reports"
+  },
+  {
+    "id": "biratnagar",
+    "name": "Biratnagar Metropolitan City",
+    "url": "https://biratnagarmun.gov.np",
+    "category": "palika",
+    "description": "Biratnagar municipal services, revenue payments, and ward notices"
+  },
+  {
+    "id": "consular-attestation",
+    "name": "Department of Consular Services",
+    "url": "https://nepalconsular.gov.np",
+    "category": "citizen",
+    "description": "Document attestation appointments and consular verification"
+  },
+  {
+    "id": "dolma-lrims",
+    "name": "Department of Land Management (LRIMS)",
+    "url": "https://dolma.gov.np",
+    "category": "citizen",
+    "description": "Land records, deed transfers, and Malpot revenue systems"
+  },
+  {
+    "id": "dofe-feims",
+    "name": "Foreign Employment Information System (FEIMS)",
+    "url": "https://feims.dofe.gov.np",
+    "category": "citizen",
+    "description": "Online labour permits (Shram Swikriti) and manpower verification"
+  },
+  {
+    "id": "mec-nepal",
+    "name": "Medical Education Commission (MEC)",
+    "url": "https://mec.gov.np",
+    "category": "citizen",
+    "description": "Common entrance examinations, merit lists, and medical college matching"
+  },
+  {
+    "id": "ciaa-nepal",
+    "name": "Commission for Investigation of Abuse of Authority (CIAA)",
+    "url": "https://ciaa.gov.np",
+    "category": "core",
+    "description": "Public corruption complaints, investigations, and prosecution reports"
+  },
+  {
+    "id": "nepal-police-opcr",
+    "name": "Nepal Police Online Clearance (OPCR)",
+    "url": "https://opcr.nepalpolice.gov.np",
+    "category": "citizen",
+    "description": "Online police clearance certificate applications and verification"
+  }
+]
