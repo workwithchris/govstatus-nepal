@@ -642,5 +642,194 @@
     "url": "https://birgunjmun.gov.np",
     "category": "palika",
     "description": "Birgunj municipal services, taxes, and ward notices"
+  },
+  {
+    "id": "doit",
+    "name": "Department of Information Technology (DoIT)",
+    "url": "https://doit.gov.np",
+    "category": "infrastructure",
+    "description": "National IT infrastructure, government cloud, and digital services"
+  },
+  {
+    "id": "nepal-army",
+    "name": "Nepali Army (Nepali Sena)",
+    "url": "https://nepalarmy.mil.np",
+    "category": "core",
+    "description": "National defence, military operations, and recruitment portal"
+  },
+  {
+    "id": "apf-nepal",
+    "name": "Armed Police Force (APF Nepal)",
+    "url": "https://apf.gov.np",
+    "category": "core",
+    "description": "Border security, disaster response, and law enforcement services"
+  },
+  {
+    "id": "ntc",
+    "name": "Nepal Telecom (NTC)",
+    "url": "https://ntc.net.np",
+    "category": "infrastructure",
+    "description": "State-owned national telecommunications and internet provider"
+  },
+  {
+    "id": "noc",
+    "name": "Nepal Oil Corporation (NOC)",
+    "url": "https://noc.org.np",
+    "category": "infrastructure",
+    "description": "Petroleum product supply, pricing, and national fuel distribution"
+  },
+  {
+    "id": "law-commission",
+    "name": "Nepal Law Commission",
+    "url": "https://lawcommission.gov.np",
+    "category": "core",
+    "description": "Repository of laws, acts, regulations, and the Constitution of Nepal"
+  },
+  {
+    "id": "dda",
+    "name": "Department of Drug Administration (DDA)",
+    "url": "https://dda.gov.np",
+    "category": "citizen",
+    "description": "Pharmaceutical regulations, drug safety standards, and pharmacy licensing"
+  },
+  {
+    "id": "dftqc",
+    "name": "Food Technology & Quality Control (DFTQC)",
+    "url": "https://dftqc.gov.np",
+    "category": "citizen",
+    "description": "Food quality testing, safety inspections, and consumer hygiene standards"
+  },
+  {
+    "id": "nbsm",
+    "name": "Nepal Bureau of Standards & Metrology (NBSM)",
+    "url": "https://nbsm.gov.np",
+    "category": "business",
+    "description": "National standards authority and Nepal Standard (NS) quality marks"
+  },
+  {
+    "id": "ku",
+    "name": "Kathmandu University (KU)",
+    "url": "https://ku.edu.np",
+    "category": "education",
+    "description": "Autonomous higher education institution and academic programs"
+  },
+  {
+    "id": "pu",
+    "name": "Pokhara University (PU)",
+    "url": "https://pu.edu.np",
+    "category": "education",
+    "description": "Public university offering undergraduate and postgraduate studies"
+  },
+  {
+    "id": "mu",
+    "name": "Mid-West University (MU)",
+    "url": "https://mu.edu.np",
+    "category": "education",
+    "description": "State university located in Surkhet serving the Karnali region"
+  },
+  {
+    "id": "fwu",
+    "name": "Far Western University (FWU)",
+    "url": "https://fwu.edu.np",
+    "category": "education",
+    "description": "State university located in Kanchanpur serving the Sudurpashchim region"
+  },
+  {
+    "id": "nmc",
+    "name": "Nepal Medical Council (NMC)",
+    "url": "https://nmc.org.np",
+    "category": "citizen",
+    "description": "Statutory body for medical education standards and doctor registrations"
+  },
+  {
+    "id": "nnc",
+    "name": "Nepal Nursing Council (NNC)",
+    "url": "https://nnc.org.np",
+    "category": "citizen",
+    "description": "Registration and regulation of nurses and midwives across Nepal"
+  },
+  {
+    "id": "nec",
+    "name": "Nepal Engineering Council (NEC)",
+    "url": "https://nec.gov.np",
+    "category": "citizen",
+    "description": "Professional registration and licensing examinations for engineers"
+  },
+  {
+    "id": "bar-council",
+    "name": "Nepal Bar Council",
+    "url": "https://nepalbarcouncil.org.np",
+    "category": "citizen",
+    "description": "Regulatory authority for advocate licensing and legal ethics"
+  },
+  {
+    "id": "ndrrma",
+    "name": "Disaster Risk Reduction Authority (NDRRMA)",
+    "url": "https://ndrrma.gov.np",
+    "category": "infrastructure",
+    "description": "National emergency operations, disaster warnings, and relief coordination"
+  },
+  {
+    "id": "doenv",
+    "name": "Department of Environment",
+    "url": "https://doenv.gov.np",
+    "category": "infrastructure",
+    "description": "National pollution control, air quality monitoring, and environmental impact"
+  },
+  {
+    "id": "dnpwc",
+    "name": "National Parks & Wildlife Conservation (DNPWC)",
+    "url": "https://dnpwc.gov.np",
+    "category": "infrastructure",
+    "description": "Protected areas, conservation permits, and wildlife protection"
+  },
+  {
+    "id": "doib",
+    "name": "Department of Information & Broadcasting (DoIB)",
+    "url": "https://doib.gov.np",
+    "category": "core",
+    "description": "Journalist accreditation, media registration, and official state releases"
+  },
+  {
+    "id": "dot-tourism",
+    "name": "Department of Tourism",
+    "url": "https://tourismdepartment.gov.np",
+    "category": "citizen",
+    "description": "Himalayan mountaineering expeditions, permits, and hospitality licensing"
+  },
+  {
+    "id": "ntb",
+    "name": "Nepal Tourism Board (NTB)",
+    "url": "https://ntb.gov.np",
+    "category": "business",
+    "description": "National tourism promotion, destination marketing, and TIMS permits"
+  },
+  {
+    "id": "dmli",
+    "name": "Department of Money Laundering Investigation (DMLI)",
+    "url": "https://dmli.gov.np",
+    "category": "finance",
+    "description": "Financial intelligence, anti-money laundering, and terror financing investigations"
+  },
+  {
+    "id": "doa",
+    "name": "Department of Agriculture (DoA)",
+    "url": "https://doa.gov.np",
+    "category": "citizen",
+    "description": "Agricultural extension, crop advisory, and farming support systems"
+  },
+  {
+    "id": "dls",
+    "name": "Department of Livestock Services (DLS)",
+    "url": "https://dls.gov.np",
+    "category": "citizen",
+    "description": "Veterinary services, animal health management, and dairy development"
+  },
+  {
+    "id": "lumbini-dev",
+    "name": "Lumbini Development Trust",
+    "url": "https://lumbinidevtrust.gov.np",
+    "category": "citizen",
+    "description": "Preservation and management of the sacred birthplace of Lord Buddha"
   }
 ]
