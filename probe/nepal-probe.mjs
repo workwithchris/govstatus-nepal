@@ -86,8 +86,10 @@ async function mapLimit(items, limit, fn) {
 /* -------------------------------- probing -------------------------------- */
 
 const seeds = JSON.parse(readFileSync(join(ROOT, "src/data/seed-services.json"), "utf8"));
+// Browser-like UA: .np WAFs reset/stall the old self-describing bot UA
+// (kathmandu.gov.np, nea.org.np) but serve normal responses to a browser UA.
 const USER_AGENT =
-  "GovStatusNepal-HealthBot/1.0 (+https://govstatusnepal.techyatraa.com)";
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 
 let relaxedAgent = null;
 function getRelaxedAgent() {

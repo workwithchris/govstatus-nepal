@@ -41,8 +41,11 @@ const PERSIST_INTERVAL_MS =
 const SNAPSHOT_TTL_MS = 5 * 60 * 1000;
 /** How often TLS certs are re-probed (not every probe cycle). */
 const CERT_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+// A self-describing bot UA makes .np WAFs drop or stall the probe (e.g.
+// kathmandu.gov.np resets bot connections, nea.org.np serves different
+// redirects). A browser-like UA gets the same responses a visitor does.
 const USER_AGENT =
-  "GovStatusNepal-HealthBot/1.0 (+https://govstatusnepal.techyatraa.com)";
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 
 /**
  * Node/undici strictly validates certificate chains; browsers additionally
