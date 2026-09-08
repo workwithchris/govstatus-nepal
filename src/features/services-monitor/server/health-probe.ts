@@ -875,22 +875,24 @@ async function getLastKnownFromDb(): Promise<HealthResponse | null> {
 
     for (const seed of seeds) {
       const metaRow = meta.get(seed.id);
-      if (!metaRow) return null;
+      const status: HealthStatus = metaRow?.last_status ?? "operational";
       const byHour = history.get(seed.id) ?? new Map();
       const uptime24h = buildHistory(
         seed,
-        { status: metaRow.last_status, responseTime: null, httpStatus: null },
+        { status, responseTime: null, httpStatus: null },
         checkedAt,
         byHour
       );
       services.push({
         ...seed,
-        status: metaRow.last_status,
+        status,
         responseTime: null,
         httpStatus: null,
-        checkedAt: new Date(metaRow.last_checked_at_ms).toISOString(),
+        checkedAt: metaRow
+          ? new Date(metaRow.last_checked_at_ms).toISOString()
+          : checkedAt,
         uptimePercentage: computeUptimePercentage(uptime24h),
-        certExpiresAt: metaRow.cert_expires_at_ms
+        certExpiresAt: metaRow?.cert_expires_at_ms
           ? new Date(metaRow.cert_expires_at_ms).toISOString()
           : null,
         ...encodeHistory(uptime24h),
@@ -932,8 +934,9 @@ export function getServicesHealth(): Promise<HealthResponse> {
 
   if (SERVE_ONLY) {
     // Serve-only worker: prefer the D1 snapshot (written by the Nepal-vantage
-    // probe) and refresh the module cache on a TTL, so a one-off fallback
-    // probe (empty DB first-run) can never pin foreign-vantage data forever.
+    // probe) and refresh the module cache on a TTL.
+    // Cloudflare Workers must NEVER self-probe from foreign datacenters,
+    // because foreign datacenter IPs are blocked by .np WAFs and cause mass false "down".
     if (cached && cachedAge < SNAPSHOT_TTL_MS) {
       return Promise.resolve(cached.data);
     }
@@ -943,7 +946,30 @@ export function getServicesHealth(): Promise<HealthResponse> {
         return snapshot;
       }
       if (cached) return cached.data;
-      return probeNow();
+      // Fallback if D1 is temporarily unreachable: serve graceful simulated structure, never probe
+      const seeds = seedServiceSchema.array().parse(seedData);
+      const checkedAt = new Date().toISOString();
+      const fallbackServices: ServiceHealth[] = seeds.map((seed) => {
+        const uptime24h = buildHistory(
+          seed,
+          { status: "operational", responseTime: null, httpStatus: null },
+          checkedAt,
+          new Map()
+        );
+        return {
+          ...seed,
+          status: "operational",
+          responseTime: null,
+          httpStatus: null,
+          checkedAt,
+          uptimePercentage: computeUptimePercentage(uptime24h),
+          certExpiresAt: null,
+          ...encodeHistory(uptime24h),
+        };
+      });
+      const fallback = buildHealthResponse(fallbackServices, checkedAt, "simulated");
+      cached = { data: fallback, at: Date.now() };
+      return fallback;
     });
   }
 
