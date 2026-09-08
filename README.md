@@ -1,36 +1,139 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GovStatus Nepal
 
-## Getting Started
+Real-time uptime monitor, health checker, and reliability tracker for Nepal's
+government portals and digital public services.
 
-First, run the development server:
+Live probe results are embedded server-side, refreshed every minute, and
+backed by a persisted status history in Cloudflare D1.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+![Tech](https://img.shields.io/badge/Next.js%2016-App%20Router-black)
+![Tech](https://img.shields.io/badge/TypeScript-strict-blue)
+![Tech](https://img.shields.io/badge/Cloudflare-D1-F6821F)
+
+## What it does
+
+- **Parallel health probes** — 38 government services (passports, tax, land
+  records, ministries, palikas…) checked concurrently every 60s with an 8s
+  `AbortController` timeout and a custom bot user agent
+- **Status derivation** — `operational` (200–399 under 3.5s), `degraded`
+  (slow or 403/WAF), `down` (5xx, refused, timeout)
+- **TLS-relaxed retry** — Node/undici rejects incomplete certificate chains
+  that browsers tolerate; probes retry once with relaxed TLS so certificate
+  quirks don't read as outages
+- **24-hour uptime bars** — hourly history per service, persisted to
+  Cloudflare D1 (7-day retention), newest slot always from the live probe
+- **Live probe loader** — a full-page loader with real progress
+  (checked/total, down/degraded counts, recent completions) streamed from a
+  progress endpoint
+- **Dashboard** — metric cards, instant search, category tabs with counts,
+  sort by status/name/latency, card grid + sortable table view, dark/light
+  mode
+- **Caching** — ISR (`revalidate = 60`) plus `s-maxage=60,
+  stale-while-revalidate=30`; probes run at most once per minute regardless
+  of traffic
+
+## Monitored services
+
+Citizen (passports, licenses, land records, police clearance, exams),
+finance (tax, NEPSE, NRB, EPF, SSF, customs), business (OCR, e-GP), core
+(national portal, election commission, NPC, CIAA), ministries, and
+metropolitan cities. The catalog lives in
+[`src/data/seed-services.json`](src/data/seed-services.json) — add an entry
+and the tabs, counts, and probes pick it up automatically.
+
+## Tech stack
+
+| Layer | Choice |
+|---|---|
+| Framework | Next.js 16 (App Router, Turbopack), TypeScript strict |
+| Styling | Tailwind CSS v4 + shadcn-style primitives |
+| Server state | TanStack React Query (staleTime/refetchInterval 60s) |
+| Client state | Zustand (search, category, sort, view) |
+| Validation | Zod for every API payload and internal model |
+| History | Cloudflare D1 (SQLite) via REST API |
+| Fonts/icons | Geist Sans + Geist Mono, Lucide |
+
+## Architecture
+
+```
+src/
+├── app/
+│   ├── api/health/route.ts           # ISR probe API (revalidate 60)
+│   ├── api/health/progress/route.ts  # Live probe progress (uncached)
+│   ├── layout.tsx / page.tsx         # Shell + dashboard (SSR-prefetched)
+│   ├── loading.tsx                   # Full-page live probe loader
+│   └── providers.tsx                 # React Query + theme providers
+├── data/seed-services.json           # Service catalog
+├── features/services-monitor/        # Feature module
+│   ├── api/                          # useServicesHealth, useFilteredServices
+│   ├── components/                   # Cards, grid, table, metrics, loader…
+│   ├── server/health-probe.ts        # Probe engine + D1 history + cache
+│   ├── store/useFilterStore.ts       # Zustand filters
+│   └── types/                        # Zod schemas → inferred types
+├── components/{ui,common}/           # Primitives, navbar/footer/toggle
+└── lib/                              # Query client, cn, D1 REST client
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Getting started
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run dev        # http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Optional: Cloudflare D1 status history
 
-## Learn More
+Without D1 credentials the app degrades gracefully to simulated history.
+To persist real status history:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+# 1. Create the database (or use the existing govstatus-history)
+npx wrangler login
+npx wrangler d1 create govstatus-history
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# 2. Apply the schema
+npx wrangler d1 execute govstatus-history --remote --file d1/schema.sql
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# 3. Create an API token with "D1: Edit" permission
+#    https://dash.cloudflare.com/profile/api-tokens
 
-## Deploy on Vercel
+# 4. Fill in .env.local
+cp .env.example .env.local
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+CLOUDFLARE_ACCOUNT_ID=...
+CLOUDFLARE_D1_DATABASE_ID=...
+CLOUDFLARE_API_TOKEN=...
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Each probe cycle then reads the last 24h of real history and appends its
+results (one batch insert + a retention delete per run).
+
+## Scripts
+
+```bash
+npm run dev      # Dev server (Turbopack)
+npm run build    # Production build
+npm run start    # Serve production build
+npm run lint     # ESLint
+```
+
+## Deployment
+
+Any Node host works (Vercel, Fly, VPS). The D1 REST client needs no native
+bindings, so the same code also ports to Cloudflare Workers via
+[OpenNext](https://opennext.js.org/) without changes to the probe engine.
+
+## Notes
+
+- Independent tracker — not affiliated with any government body
+- "Down" means *unreachable from the probe's vantage point*; some .np
+  portals filter foreign/datacenter traffic and may show as down while
+  loading fine for citizens inside Nepal
+- Uptime percentages only count hours with recorded data (grey slots =
+  no data yet)
+
+## License
+
+MIT
