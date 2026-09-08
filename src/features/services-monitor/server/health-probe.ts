@@ -14,7 +14,10 @@ import {
   type UptimeSlot,
 } from "@/features/services-monitor/types";
 
-const PROBE_TIMEOUT_MS = 8000;
+// Long timeout: several .np municipal portals take 20-40s to respond (bharatpur
+// ~19s, biratnagar ~28s, pokhara ~38s). An 8s abort marked them "down" even
+// though they work. Overridable via PROBE_TIMEOUT_MS.
+const PROBE_TIMEOUT_MS = Math.max(1000, Number(process.env.PROBE_TIMEOUT_MS) || 45000);
 const SLOW_THRESHOLD_MS = 3500;
 const HISTORY_SLOTS = 24;
 const HOUR_MS = 60 * 60 * 1000;

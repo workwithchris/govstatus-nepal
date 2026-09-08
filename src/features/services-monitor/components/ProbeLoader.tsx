@@ -184,8 +184,8 @@ export function ProbeLoader({ variant = "page" }: ProbeLoaderProps) {
       </div>
 
       <p className="mt-4 border-t border-border pt-4 text-xs text-muted-foreground">
-        Parallel fetches with an 8s timeout, relaxed-TLS retry on certificate
-        errors, and 24h history persisted per run.
+        Parallel fetches with a 45s per-portal timeout, relaxed-TLS retry on
+        certificate errors, and 24h history persisted per run.
       </p>
     </Card>
   );

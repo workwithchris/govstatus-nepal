@@ -14,7 +14,8 @@ backed by a persisted status history in Cloudflare D1.
 
 - **Parallel health probes** — 92 government services (passports, tax, land
   records, ministries, palikas…) checked concurrently every 5 minutes with an
-  8s `AbortController` timeout and a browser-like user agent, **from a
+  8s→45s `AbortController` timeout (configurable via `PROBE_TIMEOUT_MS`)
+  and a browser-like user agent, **from a
   Nepal-vantage point** (Cloudflare datacenter IPs are WAF-blocked and
   TLS-strict-rejected by many .np portals, which made foreign-vantage
   "down" readings unreliable; a self-describing bot UA likewise gets
