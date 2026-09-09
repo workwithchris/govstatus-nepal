@@ -94,7 +94,6 @@ govstatus/
 │   ├── nepal-probe.mjs              # Nepal-vantage probe (production probing)
 │   ├── run-probe.sh                 # launchd wrapper (overlap lock)
 │   └── tally.mjs                    # report tool
-├── cron-worker/                     # DEPRECATED old cron scheduler
 ├── custom-worker.ts                 # Worker entry (imports generated .open-next/worker.js)
 ├── worker-polyfills.ts              # workerd MessagePort/Channel polyfill
 ├── wrangler.jsonc                   # Worker config (name/bindings/vars)
@@ -261,9 +260,9 @@ Scheduling: cron every 5 min
 or on macOS via `probe/run-probe.sh` under launchd (uses an atomic `mkdir` lock
 to prevent overlapping runs — a cycle can take minutes with 45s timeouts).
 
-The **old `cron-worker/`** (a separate Worker that POSTed `/api/probe` every
-minute) is **deprecated** — the Worker is now serve-only and `/api/probe`
-returns 403 there. Undeploy it.
+The legacy `cron-worker/` (a separate Worker that POSTed `/api/probe` every
+minute) has been **removed** — the Worker is serve-only and `/api/probe`
+returns 403 there; probing is owned solely by `probe/nepal-probe.mjs`.
 
 ---
 

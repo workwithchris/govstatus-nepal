@@ -208,24 +208,15 @@ binding for ISR revalidation, and if the two diverge, deploy fails with
 error 10143.
 
 Workers notes:
-- Set `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_D1_DATABASE_ID`,
-  `CLOUDFLARE_API_TOKEN`, and `CRON_SECRET` as Worker secrets/vars
-  (`wrangler secret put …` / `wrangler.toml` vars).
+- Set `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_D1_DATABASE_ID`, and
+  `CLOUDFLARE_API_TOKEN` as Worker secrets/vars
+  (`wrangler secret put …` / `wrangler.toml` vars). The Worker is serve-only;
+  `CRON_SECRET` is only needed if you host the probe cycle on a Node platform
+  (Vercel Cron, self-hosted — see `/api/probe`).
 - ISR (`revalidate = 60`) needs a KV binding on Workers (OpenNext cache
   binding); without it the page regenerates per request but still serves the
   fast module cache / D1 snapshot.
 - Probes on Workers do a single strict fetch (no relaxed-TLS retry).
-
-### Scheduled probing (Cloudflare Cron)
-
-**Deprecated** — probing now runs on a Nepal-vantage machine via
-`probe/nepal-probe.mjs`, and the Worker is serve-only (`SERVE_ONLY` is
-auto-enabled on workerd; `/api/probe` returns 403). The old cron worker that
-triggered `/api/probe` is no longer needed — undeploy it:
-
-```bash
-npx wrangler delete govstatus-cron -c cron-worker/wrangler.jsonc
-```
 
 ### Nepal-vantage probing
 

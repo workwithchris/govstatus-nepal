@@ -128,15 +128,6 @@ export default function AboutPage() {
               never fabricate availability. When the underlying database is
               unreachable, the dashboard says so instead of pretending.
             </p>
-            <p>
-              Status history is retained for 90 days and rolled into daily
-              records; everything is derived from the same persisted hourly
-              data you can query via{" "}
-              <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
-                /api/health/history
-              </code>
-              .
-            </p>
           </div>
         </section>
 
