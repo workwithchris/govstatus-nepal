@@ -10,6 +10,7 @@ import { MetricsOverview } from "@/features/services-monitor/components/MetricsO
 import { SearchAndSortBar } from "@/features/services-monitor/components/SearchAndSortBar";
 import { ServicesView } from "@/features/services-monitor/components/ServicesView";
 import { SimulatedDataNotice } from "@/features/services-monitor/components/SimulatedDataNotice";
+import { StatusLegend } from "@/features/services-monitor/components/StatusLegend";
 import { useLang } from "@/lib/i18n";
 
 export function HomeTabs() {
@@ -37,6 +38,7 @@ export function HomeTabs() {
         <div className="space-y-4">
           <SearchAndSortBar />
           <CategoryFilters />
+          <StatusLegend />
         </div>
         <ServicesView />
       </TabsContent>

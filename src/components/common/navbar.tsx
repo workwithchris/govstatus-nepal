@@ -30,6 +30,12 @@ export function Navbar() {
           >
             {t("nav.metrics")}
           </a>
+          <a
+            href="/about"
+            className="rounded-full px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {t("nav.about")}
+          </a>
           <button
             onClick={() => setLang(lang === "en" ? "ne" : "en")}
             className="rounded-full border border-border px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
