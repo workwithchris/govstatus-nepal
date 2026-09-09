@@ -9,7 +9,20 @@ export function ServicesView() {
   const view = useFilterStore((s) => s.view);
   return (
     <>
-      {view === "table" ? <ServiceTable /> : <ServiceGrid />}
+      {view === "table" ? (
+        <>
+          {/* The wide table doesn't fit a phone viewport; fall back to the
+              stacked cards so every column stays in view without scrolling. */}
+          <div className="lg:hidden">
+            <ServiceGrid />
+          </div>
+          <div className="hidden lg:block">
+            <ServiceTable />
+          </div>
+        </>
+      ) : (
+        <ServiceGrid />
+      )}
       <ServiceDetailDialog />
     </>
   );

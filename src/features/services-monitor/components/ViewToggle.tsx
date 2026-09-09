@@ -16,7 +16,9 @@ export function ViewToggle() {
 
   return (
     <div
-      className="flex items-center gap-0.5 rounded-full border border-border bg-card p-0.5"
+      // The table view is only rendered on lg+ screens (ServicesView), so the
+      // toggle is meaningless on smaller viewports.
+      className="hidden items-center gap-0.5 rounded-full border border-border bg-card p-0.5 lg:flex"
       role="group"
       aria-label="Switch view"
     >

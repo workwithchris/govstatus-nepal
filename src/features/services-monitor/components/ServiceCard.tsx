@@ -40,11 +40,11 @@ export function ServiceCard({ service }: ServiceCardProps) {
       }}
       className="cursor-pointer gap-0 p-0 transition-shadow hover:shadow-[0_1px_1px_rgba(0,0,0,0.04),0_8px_16px_-4px_rgba(0,0,0,0.08)] focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
     >
-      <div className="flex-1 p-6 pb-4">
+      <div className="flex-1 p-4 pb-3 sm:p-6 sm:pb-4">
         <div className="flex items-start gap-3">
           <ServiceLogo url={service.url} name={service.name} />
           <div className="min-w-0 space-y-1.5">
-            <h3 className="line-clamp-2 text-lg font-semibold leading-7 tracking-[-0.02em] text-foreground">
+            <h3 className="line-clamp-2 text-base font-semibold leading-6 tracking-[-0.02em] text-foreground sm:text-lg sm:leading-7">
               {service.name}
             </h3>
             <div className="flex items-center gap-2">
@@ -69,17 +69,17 @@ export function ServiceCard({ service }: ServiceCardProps) {
           </div>
         </div>
 
-        <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">
+        <p className="mt-2 line-clamp-2 text-sm text-muted-foreground sm:mt-3">
           {service.description}
         </p>
       </div>
 
-      <div className="border-t border-border px-6 py-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="border-t border-border px-4 py-3 sm:px-6 sm:py-4">
+        <div className="mb-2.5 flex items-center justify-between gap-3 sm:mb-3">
           <Badge variant="secondary">
             {CATEGORY_LABELS[service.category] ?? service.category}
           </Badge>
-          <p className="font-mono text-[11px] text-muted-foreground">
+          <p className="font-mono text-[10px] text-muted-foreground sm:text-[11px]">
             {formatLatency(service.responseTime)}
             <span className="mx-1.5">·</span>
             {service.uptimePercentage.toFixed(1)}% uptime
@@ -87,7 +87,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
         </div>
         <UptimeBar
           service={service}
-          className="h-5"
+          className="h-4 sm:h-5"
         />
       </div>
     </Card>
