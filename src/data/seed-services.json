@@ -1013,5 +1013,187 @@
     "url": "https://nou.edu.np",
     "category": "education",
     "description": "National distance-learning university offering online and hybrid degree programs"
+  },
+  {
+    "id": "dohs",
+    "name": "Department of Health Services (DoHS)",
+    "url": "https://dohs.gov.np",
+    "category": "citizen",
+    "description": "Public health programs, EWARS disease surveillance, and vaccine services"
+  },
+  {
+    "id": "edcd",
+    "name": "Epidemiology & Disease Control Division (EDCD)",
+    "url": "https://edcd.gov.np",
+    "category": "citizen",
+    "description": "Communicable disease surveillance, outbreak response, and health bulletins"
+  },
+  {
+    "id": "nhrc-health",
+    "name": "Nepal Health Research Council (NHRC)",
+    "url": "https://nhrc.org.np",
+    "category": "citizen",
+    "description": "National health research ethics and research approval body"
+  },
+  {
+    "id": "bpkihs",
+    "name": "BP Koirala Institute of Health Sciences (BPKIHS)",
+    "url": "https://bpkihs.edu",
+    "category": "citizen",
+    "description": "Eastern Nepal's premier public health sciences institute and hospital"
+  },
+  {
+    "id": "nphl",
+    "name": "National Public Health Laboratory (NPHL)",
+    "url": "https://nphl.gov.np",
+    "category": "citizen",
+    "description": "Reference diagnostics, lab quality assurance, and disease confirmation"
+  },
+  {
+    "id": "mero-kitta",
+    "name": "Land Records Portal (Mero Kitta)",
+    "url": "https://merokitta.com",
+    "category": "citizen",
+    "description": "Online land record certificates (Lalpurja) and ownership details"
+  },
+  {
+    "id": "nia",
+    "name": "Nepal Insurance Authority (NIA)",
+    "url": "https://nia.gov.np",
+    "category": "finance",
+    "description": "Insurance regulator: market statistics, circulars, and consumer complaints"
+  },
+  {
+    "id": "pdmo",
+    "name": "Public Debt Management Office (PDMO)",
+    "url": "https://pdmo.gov.np",
+    "category": "finance",
+    "description": "Treasury bill and bond auctions, debt statistics, and citizen saving bonds"
+  },
+  {
+    "id": "ibn",
+    "name": "Investment Board Nepal (IBN)",
+    "url": "https://ibn.gov.np",
+    "category": "business",
+    "description": "Facilitation and approval of large-scale domestic and foreign investment"
+  },
+  {
+    "id": "tepc",
+    "name": "Trade & Export Promotion Centre (TEPC)",
+    "url": "https://tepc.gov.np",
+    "category": "business",
+    "description": "Export promotion, certificates of origin, and trade statistics"
+  },
+  {
+    "id": "dcsi",
+    "name": "Department of Cottage & Small Industries (DCSI)",
+    "url": "https://dcsi.gov.np",
+    "category": "business",
+    "description": "Cottage and small industry registration, promotion, and entrepreneurship support"
+  },
+  {
+    "id": "sez",
+    "name": "Special Economic Zone Authority (SEZ)",
+    "url": "https://seznepal.gov.np",
+    "category": "business",
+    "description": "Operator of export-oriented special economic zones across Nepal"
+  },
+  {
+    "id": "nso",
+    "name": "National Statistics Office (NSO)",
+    "url": "https://nsonepal.gov.np",
+    "category": "core",
+    "description": "National census, economic accounts, and official statistics (ex-CBS)"
+  },
+  {
+    "id": "swc",
+    "name": "Social Welfare Council (SWC)",
+    "url": "https://swc.org.np",
+    "category": "core",
+    "description": "NGO/INGO affiliation and registration under the Social Welfare Act"
+  },
+  {
+    "id": "caan",
+    "name": "Civil Aviation Authority of Nepal (CAAN)",
+    "url": "https://caanepal.gov.np",
+    "category": "infrastructure",
+    "description": "Aviation regulation, airport operations, and flight safety oversight"
+  },
+  {
+    "id": "doed",
+    "name": "Department of Electricity Development (DOED)",
+    "url": "https://doed.gov.np",
+    "category": "infrastructure",
+    "description": "Hydropower generation licenses, surveys, and electricity project approvals"
+  },
+  {
+    "id": "dwssm",
+    "name": "Department of Water Supply & Sewerage Management (DWSSM)",
+    "url": "https://dwssm.gov.np",
+    "category": "infrastructure",
+    "description": "National drinking water and sanitation projects and policy"
+  },
+  {
+    "id": "erc",
+    "name": "Electricity Regulatory Commission (ERC)",
+    "url": "https://erc.gov.np",
+    "category": "infrastructure",
+    "description": "Electricity tariff regulation, licenses, and consumer grievance oversight"
+  },
+  {
+    "id": "nepalpost",
+    "name": "Department of Postal Service (Nepal Post)",
+    "url": "https://nepalpost.gov.np",
+    "category": "infrastructure",
+    "description": "National postal network, EMS, parcels, and philately services"
+  },
+  {
+    "id": "cdc",
+    "name": "Curriculum Development Centre (CDC)",
+    "url": "https://moecdc.gov.np",
+    "category": "education",
+    "description": "School curriculum, textbooks, and national education standards"
+  },
+  {
+    "id": "cehrd",
+    "name": "Centre for Education & Human Resource Development (CEHRD)",
+    "url": "https://cehrd.gov.np",
+    "category": "education",
+    "description": "School data (EMIS), teacher management, and education statistics"
+  },
+  {
+    "id": "narc",
+    "name": "Nepal Agricultural Research Council (NARC)",
+    "url": "https://narc.gov.np",
+    "category": "education",
+    "description": "Agricultural research, crop breeding, and farming technology"
+  },
+  {
+    "id": "butwal",
+    "name": "Butwal Sub-Metropolitan City",
+    "url": "https://butwalmun.gov.np",
+    "category": "palika",
+    "description": "Local services, building permits, and ward information for Butwal"
+  },
+  {
+    "id": "janakpur",
+    "name": "Janakpurdham Sub-Metropolitan City",
+    "url": "https://janakpurmun.gov.np",
+    "category": "palika",
+    "description": "Local services, citizen charter, and open data for Janakpurdham"
+  },
+  {
+    "id": "hetauda",
+    "name": "Hetauda Sub-Metropolitan City",
+    "url": "https://hetaudamun.gov.np",
+    "category": "palika",
+    "description": "Local services, tax portal, and municipal updates for Hetauda"
+  },
+  {
+    "id": "dharan",
+    "name": "Dharan Sub-Metropolitan City",
+    "url": "https://dharan.gov.np",
+    "category": "palika",
+    "description": "Local services, building permits (e-BPS), and ward information for Dharan"
   }
 ]
