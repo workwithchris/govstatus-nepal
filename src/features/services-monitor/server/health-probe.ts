@@ -193,10 +193,39 @@ async function drainBody(res: Awaited<ReturnType<typeof probeRequest>>): Promise
   }
 }
 
-interface ProbeResult {
+export interface ProbeResult {
   status: HealthStatus;
   responseTime: number | null;
   httpStatus: number | null;
+}
+
+/**
+ * Classify a single probe outcome. Pure decision table — the piece that
+ * decides what the dashboard shows:
+ *  - operational: 200–399 and responded under `slowMs`
+ *  - degraded:    responded but slow (>`slowMs`), 403 (WAF block), or 429 (rate limit)
+ *  - down:        5xx, other 4xx, connection refused, or timeout (httpStatus null)
+ */
+export function classifyProbe(
+  httpStatus: number | null,
+  responseTime: number,
+  slowMs: number = SLOW_THRESHOLD_MS
+): ProbeResult {
+  if (httpStatus !== null && httpStatus >= 200 && httpStatus < 400) {
+    return {
+      status: responseTime > slowMs ? "degraded" : "operational",
+      responseTime,
+      httpStatus,
+    };
+  }
+  if (httpStatus === 403 || httpStatus === 429) {
+    return { status: "degraded", responseTime, httpStatus };
+  }
+  return {
+    status: "down",
+    responseTime: httpStatus !== null ? responseTime : null,
+    httpStatus,
+  };
 }
 
 /**
@@ -204,11 +233,6 @@ interface ProbeResult {
  *  1. Primary undici probe (HTTP/1.1, browser UA, legacy TLS renegotiation)
  *  2. Relaxed-TLS undici retry (tolerates self-signed / missing CA chain gaps)
  *  3. Native node:https fallback (no ALPN extension, covers WebLogic/CentOS servers)
- *
- * Status classification:
- *  - operational: 200–399 and responded under 3500ms
- *  - degraded:    responded but slow (>3500ms), 403 (WAF block), or 429 (rate limit)
- *  - down:        5xx, other 4xx, connection refused, or timeout
  */
 async function probeOnce(url: string): Promise<ProbeResult> {
   const startedAt = performance.now();
@@ -236,25 +260,7 @@ async function probeOnce(url: string): Promise<ProbeResult> {
     if (res) await drainBody(res);
     const responseTime = Math.round(performance.now() - startedAt);
 
-    if (httpStatus !== null && httpStatus >= 200 && httpStatus < 400) {
-      return {
-        status: responseTime > SLOW_THRESHOLD_MS ? "degraded" : "operational",
-        responseTime,
-        httpStatus,
-      };
-    }
-    if (httpStatus === 403 || httpStatus === 429) {
-      return {
-        status: "degraded",
-        responseTime,
-        httpStatus,
-      };
-    }
-    return {
-      status: "down",
-      responseTime: httpStatus !== null ? responseTime : null,
-      httpStatus,
-    };
+    return classifyProbe(httpStatus, responseTime);
   } catch (err) {
     if (!probeErrorLogged) {
       probeErrorLogged = true;
@@ -277,24 +283,36 @@ const CONFIRM_DELAY_MS = 2500;
  * result. A result that looks "down" is re-probed once after a short delay and
  * only reported down if it fails again — cuts single-fetch false alarms on
  * flaky .np infra. For deep checks the worse of (homepage, checkUrl) wins.
+ *
+ * `probeFn`/`confirmDelayMs` are injectable for tests; production uses the
+ * real network probe and the standard confirmation delay.
  */
-async function probeService(
+export async function probeService(
   url: string,
-  checkUrl?: string
+  checkUrl?: string,
+  probeFn: (u: string) => Promise<ProbeResult> = probeOnce,
+  confirmDelayMs: number = CONFIRM_DELAY_MS
 ): Promise<ProbeResult> {
-  const first = await probeOnce(url);
+  const first = await probeFn(url);
   let result = first;
 
   // Deep check: also hit the critical endpoint and keep the worse outcome.
   if (checkUrl && checkUrl !== url) {
-    const deep = await probeOnce(checkUrl);
+    const deep = await probeFn(checkUrl);
     result = worse(result, deep);
   }
 
-  // Confirm a down reading before reporting it.
+  // Confirm a down reading before reporting it. Re-checks the same endpoints
+  // that produced the down (homepage + optional checkUrl, worse wins) so a
+  // transient blip on either endpoint doesn't report "down" — but a genuinely
+  // broken deep-check endpoint still does.
   if (result.status === "down") {
-    await new Promise((resolve) => setTimeout(resolve, CONFIRM_DELAY_MS));
-    const confirm = await probeOnce(url);
+    await new Promise((resolve) => setTimeout(resolve, confirmDelayMs));
+    let confirm = await probeFn(url);
+    if (checkUrl && checkUrl !== url) {
+      const deepConfirm = await probeFn(checkUrl);
+      confirm = worse(confirm, deepConfirm);
+    }
     if (confirm.status !== "down") result = confirm;
   }
 
@@ -302,7 +320,7 @@ async function probeService(
 }
 
 /** The worse of two probe results: down > degraded > operational. */
-function worse(a: ProbeResult, b: ProbeResult): ProbeResult {
+export function worse(a: ProbeResult, b: ProbeResult): ProbeResult {
   const rank = { down: 2, degraded: 1, operational: 0 } as const;
   if (rank[b.status] > rank[a.status]) return b;
   if (rank[b.status] === rank[a.status]) {
@@ -379,7 +397,7 @@ function certsDue(services: SeedService[]): SeedService[] {
 }
 
 /** Deterministic string hash so simulated history is stable per hour slot. */
-function hashSeed(input: string): number {
+export function hashSeed(input: string): number {
   let hash = 0;
   for (let i = 0; i < input.length; i++) {
     hash = (hash * 31 + input.charCodeAt(i)) | 0;
@@ -393,7 +411,7 @@ function hashSeed(input: string): number {
  * they stay stable across refetches; the newest slot always reflects the live
  * probe result. Only used when D1 is unconfigured/unreachable.
  */
-function simulateSlot(service: SeedService, bucketStart: number): UptimeSlot {
+export function simulateSlot(service: SeedService, bucketStart: number): UptimeSlot {
   const timestamp = new Date(bucketStart).toISOString();
   const roll = hashSeed(`${service.id}:${timestamp}`) % 100;
   const status: HealthStatus =
@@ -443,7 +461,7 @@ async function loadHistory(sinceMs: number): Promise<HistoryIndex> {
 }
 
 /** Average latency for an aggregate bucket, or null when no latency recorded. */
-function bucketLatency(row: HistoryRow): number | null {
+export function bucketLatency(row: HistoryRow): number | null {
   if (row.sample_count <= 0) return null;
   return Math.round(row.sum_response_ms / row.sample_count);
 }
@@ -481,7 +499,7 @@ async function d1BatchChunked(
  * aggregation), refresh per-service meta (current status + refreshed certs),
  * and prune buckets older than the retention window. All in one batch.
  */
-async function persistChecks(
+export async function persistChecks(
   services: ServiceHealth[],
   checkedAtMs: number,
   certRefreshes: Map<string, number>
@@ -538,7 +556,7 @@ async function persistChecks(
   await d1BatchChunked(statements);
 }
 
-function buildHistory(
+export function buildHistory(
   service: SeedService,
   live: ProbeResult,
   checkedAt: string,
@@ -579,7 +597,7 @@ function buildHistory(
   return slots;
 }
 
-function computeUptimePercentage(uptime24h: UptimeSlot[]): number {
+export function computeUptimePercentage(uptime24h: UptimeSlot[]): number {
   const knownSlots = uptime24h.filter((slot) => slot.status !== null).length;
   const operationalSlots = uptime24h.filter(
     (slot) => slot.status === "operational"
@@ -600,7 +618,7 @@ const STATUS_CHAR: Record<HealthStatus, string> = {
  * nullable latency per slot. Replaces the verbose per-slot objects so the
  * API payload stays small at scale.
  */
-function encodeHistory(uptime24h: UptimeSlot[]): {
+export function encodeHistory(uptime24h: UptimeSlot[]): {
   history: string;
   latencies: (number | null)[];
 } {
@@ -632,7 +650,7 @@ async function checkService(
   };
 }
 
-function buildHealthResponse(
+export function buildHealthResponse(
   services: ServiceHealth[],
   checkedAt: string,
   source: HealthSource
@@ -682,7 +700,7 @@ interface TransitionEvent {
 }
 
 /** Status transitions worth alerting on: worsening or recovery. */
-function computeTransitions(
+export function computeTransitions(
   services: ServiceHealth[],
   prevMeta: MetaIndex | null
 ): TransitionEvent[] {

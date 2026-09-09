@@ -454,6 +454,6 @@ Note: `next dev` re-adds a block to `AGENTS.md` — leave it alone.
    silently serves wrong status.
 10. **Probing runtime split** — relaxed-TLS retry + native fallback + cert
     probing are Node-only; keep the `IS_NODE` guards.
-11. **No tests exist** — `npm run lint` and `npx tsc --noEmit` are the checks.
+11. **Vitest suite exists** — `npm test` covers probe classification, down-confirmation + checkUrl worse-result, history codec, bucket worst-status aggregation, and transition alerts. Run it with `npm run lint` + `npx tsc --noEmit`.
 12. **145 services, catalog-driven** — add to `seed-services.json`; tabs, counts,
     and probes pick it up automatically (Zod-validated).

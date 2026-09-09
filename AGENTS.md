@@ -17,7 +17,7 @@ Uptime monitor for Nepal's government portals. Next.js 16 (App Router, Turbopack
 - `npm run dev` — dev server (re-adds the Next.js rules block above; leave it alone)
 - `npm run lint` — ESLint (`eslint.config.mjs` ignores `.open-next/**` and `open-next.output/**`)
 - `npx tsc --noEmit` — typecheck (no script in `package.json`; `tsconfig.json` is already `noEmit`)
-- No test suite exists.
+- Test suite: Vitest (`npm test` / `npx vitest run`), colocated `*.test.ts` under `src/features/services-monitor/server/`. Covers probe classification, down-confirmation, history codec, bucket aggregation, transition alerts. Run `npm run lint` + `npx tsc --noEmit` too.
 
 ## Probing ownership — don't break this
 
