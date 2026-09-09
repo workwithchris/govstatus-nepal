@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 
+import seedData from "@/data/seed-services.json";
 import { SITE_URL } from "@/lib/site";
 
 export const alt = "IsGovOnline — Is the government online?";
@@ -51,7 +52,7 @@ export default function Image() {
             online?
           </div>
           <div style={{ fontSize: 30, color: "#a1a1aa", marginTop: 24 }}>
-            Real-time uptime for 145+ Nepal government portals
+            Real-time uptime for {seedData.length} Nepal government portals
           </div>
         </div>
 
