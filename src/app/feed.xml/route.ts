@@ -42,7 +42,7 @@ export async function GET() {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>GovStatus Nepal — Incidents</title>
+    <title>IsGovOnline — Incidents</title>
     <link>${SITE_URL}</link>
     <description>Recent outages and degradations across Nepal's government digital services.</description>
     <language>en</language>

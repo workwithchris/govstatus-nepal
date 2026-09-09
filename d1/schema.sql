@@ -16,6 +16,15 @@ CREATE TABLE IF NOT EXISTS status_checks (
   sample_count INTEGER NOT NULL DEFAULT 0,
   sum_response_ms INTEGER NOT NULL DEFAULT 0,
   checked_at_ms INTEGER NOT NULL,      -- timestamp of the latest sample in the bucket
+  -- Per-sample outcome counters for the bucket (one of these increments per
+  -- probe sample). Lets the history API tell real outages (http5xx/network)
+  -- apart from firewall blocks (blocked=403) and rate limiting (rate_limited).
+  outcome_ok INTEGER NOT NULL DEFAULT 0,
+  outcome_slow INTEGER NOT NULL DEFAULT 0,
+  outcome_blocked INTEGER NOT NULL DEFAULT 0,
+  outcome_rate_limited INTEGER NOT NULL DEFAULT 0,
+  outcome_http5xx INTEGER NOT NULL DEFAULT 0,
+  outcome_network INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (service_id, bucket_ms)
 );
 

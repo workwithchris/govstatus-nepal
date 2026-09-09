@@ -96,7 +96,7 @@ export default async function EmbedPage({
         href={SITE_URL}
         style={{ display: "block", marginTop: 8, fontSize: 11, color: "#0070f3", textDecoration: "none" }}
       >
-        GovStatus Nepal
+        IsGovOnline
       </a>
     </div>
   );

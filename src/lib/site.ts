@@ -3,4 +3,4 @@
  * techyatraa.com subdomain onto a dedicated domain — everything
  * (metadata, sitemap, robots, RSS, llms.txt, embeds) follows.
  */
-export const SITE_URL = "https://govstatusnepal.techyatraa.com";
+export const SITE_URL = "https://isgovonline.techyatraa.com";

@@ -1,8 +1,9 @@
 import { ImageResponse } from "next/og";
 
 import seedData from "@/data/seed-services.json";
+import { SITE_URL } from "@/lib/site";
 
-export const alt = "GovStatus Nepal — live government portal status";
+export const alt = "IsGovOnline — live government portal status";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -36,7 +37,7 @@ export default function Image({ params }: { params: { serviceId: string } }) {
             textTransform: "uppercase",
           }}
         >
-          GovStatus Nepal
+          IsGovOnline
         </div>
 
         <div style={{ display: "flex", flexDirection: "column" }}>
@@ -51,7 +52,7 @@ export default function Image({ params }: { params: { serviceId: string } }) {
         </div>
 
         <div style={{ fontSize: 20, color: "#71717a" }}>
-          govstatusnepal.techyatraa.com
+          {new URL(SITE_URL).hostname}
         </div>
       </div>
     ),

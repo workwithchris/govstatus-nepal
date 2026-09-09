@@ -2,6 +2,10 @@ import { z } from "zod";
 
 import seedData from "@/data/seed-services.json";
 import { d1Config, d1Query } from "@/lib/d1";
+import {
+  OUTCOME_COLUMNS,
+  OUTCOME_ORDER,
+} from "@/features/services-monitor/server/outcomes";
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
@@ -27,6 +31,17 @@ export const hourlyBucketSchema = z.object({
   /** Mean response time (ms) of the samples in that hour; null when none. */
   averageResponseTime: z.number().nullable(),
   sampleCount: z.number().int().nonnegative(),
+  /** Per-sample outcome counters for the hour (present when the DB has them). */
+  outcomes: z
+    .object({
+      ok: z.number().int().nonnegative(),
+      slow: z.number().int().nonnegative(),
+      blocked: z.number().int().nonnegative(),
+      rateLimited: z.number().int().nonnegative(),
+      http5xx: z.number().int().nonnegative(),
+      network: z.number().int().nonnegative(),
+    })
+    .optional(),
 });
 export type HourlyBucket = z.infer<typeof hourlyBucketSchema>;
 
@@ -36,6 +51,17 @@ interface BucketRow {
   sample_count: number;
   sum_response_ms: number;
 }
+
+interface OutcomeRow {
+  outcome_ok?: number;
+  outcome_slow?: number;
+  outcome_blocked?: number;
+  outcome_rate_limited?: number;
+  outcome_http5xx?: number;
+  outcome_network?: number;
+}
+
+type BucketRowWithOutcomes = BucketRow & OutcomeRow;
 
 const seedById = new Map(seedData.map((seed) => [seed.id, seed]));
 
@@ -62,14 +88,25 @@ async function readBuckets(
   }
 }
 
-function bucketToHourly(row: BucketRow): HourlyBucket {
-  return {
+function bucketToHourly(row: BucketRowWithOutcomes): HourlyBucket {
+  const base: HourlyBucket = {
     bucket: new Date(row.bucket_ms).toISOString(),
     status: row.worst_status,
     sampleCount: row.sample_count,
     averageResponseTime:
       row.sample_count > 0 ? Math.round(row.sum_response_ms / row.sample_count) : null,
   };
+  if (typeof row.outcome_ok === "number") {
+    base.outcomes = {
+      ok: row.outcome_ok,
+      slow: row.outcome_slow ?? 0,
+      blocked: row.outcome_blocked ?? 0,
+      rateLimited: row.outcome_rate_limited ?? 0,
+      http5xx: row.outcome_http5xx ?? 0,
+      network: row.outcome_network ?? 0,
+    };
+  }
+  return base;
 }
 
 /**
@@ -123,13 +160,41 @@ export async function getDailyHistory(
 /**
  * Raw hourly history for one service over `days` (up to 90), ascending by
  * bucket. Sparse: hours with no recorded samples are absent so callers render
- * the gaps themselves.
+ * the gaps themselves. Outcome counters are included when the DB has the
+ * columns; on a pre-migration DB the query retries without them.
  */
 export async function getHourlyHistory(
   serviceId: string,
   days: number
 ): Promise<HourlyBucket[]> {
-  const rows = await readBuckets(serviceId, Date.now() - days * DAY_MS);
+  if (!d1Config) return [];
+  if (!seedById.has(serviceId)) return [];
+
+  const sinceMs = Date.now() - days * DAY_MS;
+  const outcomeCols = OUTCOME_ORDER.map((key) => OUTCOME_COLUMNS[key]).join(", ");
+  const baseSql = `SELECT bucket_ms, worst_status, sample_count, sum_response_ms
+       FROM status_checks
+       WHERE service_id = ? AND bucket_ms >= ?
+       ORDER BY bucket_ms`;
+
+  let rows: BucketRowWithOutcomes[];
+  try {
+    rows = await d1Query<BucketRowWithOutcomes>(
+      `SELECT bucket_ms, worst_status, sample_count, sum_response_ms, ${outcomeCols}
+       FROM status_checks
+       WHERE service_id = ? AND bucket_ms >= ?
+       ORDER BY bucket_ms`,
+      [serviceId, sinceMs]
+    );
+  } catch {
+    try {
+      rows = await d1Query<BucketRowWithOutcomes>(baseSql, [serviceId, sinceMs]);
+    } catch (err) {
+      console.error("[govstatus] history read failed:", err);
+      rows = [];
+    }
+  }
+
   return rows.map(bucketToHourly);
 }
 

@@ -22,26 +22,26 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "GovStatus Nepal — Uptime for Nepal's Digital Government",
-    template: "%s · GovStatus Nepal",
+    default: "IsGovOnline — Uptime for Nepal's Digital Government",
+    template: "%s · IsGovOnline",
   },
   description:
     "Real-time uptime monitor, health checker, and reliability tracker for Nepali government portals and digital public services — national portals, ministries, banks, and palikas.",
-  applicationName: "GovStatus Nepal",
+  applicationName: "IsGovOnline",
   alternates: { canonical: "/" },
   robots: { index: true, follow: true },
   openGraph: {
     type: "website",
     url: SITE_URL,
-    siteName: "GovStatus Nepal",
-    title: "GovStatus Nepal — Is the government online?",
+    siteName: "IsGovOnline",
+    title: "IsGovOnline — Is the government online?",
     description:
       "Live uptime and health checks for Nepal's essential citizen, finance, and ministry portals — refreshed every 5 minutes.",
     locale: "en_NP",
   },
   twitter: {
     card: "summary_large_image",
-    title: "GovStatus Nepal — Is the government online?",
+    title: "IsGovOnline — Is the government online?",
     description:
       "Live uptime and health checks for Nepal's essential citizen, finance, and ministry portals.",
   },
@@ -59,7 +59,7 @@ const structuredData = {
   "@graph": [
     {
       "@type": "WebSite",
-      name: "GovStatus Nepal",
+      name: "IsGovOnline",
       url: SITE_URL,
       description:
         "Real-time uptime monitor for Nepal's digital government portals.",
@@ -67,7 +67,7 @@ const structuredData = {
     },
     {
       "@type": "Organization",
-      name: "GovStatus Nepal",
+      name: "IsGovOnline",
       alternateName: "नेपाल सरकार स्टेटस",
       url: SITE_URL,
       description:

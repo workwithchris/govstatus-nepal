@@ -71,7 +71,7 @@ export default function DashboardPage() {
           Nepal government portal status — every service we monitor
         </h2>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          GovStatus Nepal checks {seedData.length} Nepali government websites
+          IsGovOnline checks {seedData.length} Nepali government websites
           and digital public services every 5 minutes from a Nepal vantage
           point — passports, tax filing, driving licenses, land records, NEPSE,
           ministries, universities, and municipalities. Each service has a
@@ -88,7 +88,12 @@ export default function DashboardPage() {
             return (
               <div key={category}>
                 <h3 className="flex items-baseline justify-between gap-2 font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {label}
+                  <a
+                    href={`/category/${category}`}
+                    className="hover:text-foreground hover:underline underline-offset-2"
+                  >
+                    {label}
+                  </a>
                   <span className="font-mono text-[10px] normal-case tracking-normal text-muted-foreground/60">
                     {services.length}
                   </span>

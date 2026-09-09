@@ -1,4 +1,4 @@
-# GovStatus Nepal
+# IsGovOnline
 
 Real-time uptime monitor, health checker, and reliability tracker for Nepal's
 government portals and digital public services.

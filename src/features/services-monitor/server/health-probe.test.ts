@@ -380,7 +380,22 @@ describe("persistChecks", () => {
     const upsert = statements[0].sql;
     expect(upsert).toContain("ON CONFLICT(service_id, bucket_ms)");
     expect(upsert).toContain("WHEN worst_status = 'down' OR excluded.worst_status = 'down'");
-    expect(statements[0].params).toEqual(["a", bucketMs, "down", 0, checkedAtMs]);
+    // Outcome counters ride along: [id, bucket, status, rt, checkedAt, ...6x 0/1]
+    expect(statements[0].params.slice(0, 5)).toEqual([
+      "a",
+      bucketMs,
+      "down",
+      0,
+      checkedAtMs,
+    ]);
+    expect(statements[0].params).toHaveLength(11);
+    // down + no http code → network counter set
+    expect(statements[0].params[10]).toBe(1);
+    expect(
+      statements[0].params
+        .slice(5)
+        .reduce((sum: number, n) => sum + (Number(n) || 0), 0)
+    ).toBe(1);
 
     const meta = statements[1].sql;
     expect(meta).toContain("INSERT INTO service_meta");

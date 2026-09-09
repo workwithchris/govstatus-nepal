@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run one GovStatus Nepal probe cycle (write to D1) with an overlap lock.
+# Run one IsGovOnline probe cycle (write to D1) with an overlap lock.
 # Used by launchd (com.govstatus.nepal-probe) every 5 minutes.
 #
 # The lock dir prevents overlapping runs: a cycle can take several minutes

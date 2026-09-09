@@ -1,6 +1,8 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "GovStatus Nepal — Is the government online?";
+import { SITE_URL } from "@/lib/site";
+
+export const alt = "IsGovOnline — Is the government online?";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -28,7 +30,7 @@ export default function Image() {
             textTransform: "uppercase",
           }}
         >
-          GovStatus Nepal
+          IsGovOnline
         </div>
 
         <div style={{ display: "flex", flexDirection: "column" }}>
@@ -98,7 +100,7 @@ export default function Image() {
         </div>
 
         <div style={{ fontSize: 20, color: "#71717a" }}>
-          govstatusnepal.techyatraa.com
+          {new URL(SITE_URL).hostname}
         </div>
       </div>
     ),

@@ -41,7 +41,7 @@ export function buildServiceMetadata(
     openGraph: {
       type: "website",
       url: `${SITE_URL}/status/${seed.id}`,
-      siteName: "GovStatus Nepal",
+      siteName: "IsGovOnline",
       title: `Is ${seed.name} down?`,
       description,
     },
@@ -70,7 +70,7 @@ export function buildServiceJsonLd(
     description: seed.description,
     provider: {
       "@type": "Organization",
-      name: "GovStatus Nepal",
+      name: "IsGovOnline",
       url: SITE_URL,
     },
     audience: { "@type": "Audience", audienceType: "Nepali citizens" },

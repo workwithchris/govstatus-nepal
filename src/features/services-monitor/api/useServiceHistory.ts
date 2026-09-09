@@ -24,6 +24,16 @@ const hourlyBucketSchema = z.object({
   status: z.enum(["operational", "degraded", "down"]),
   averageResponseTime: z.number().nullable(),
   sampleCount: z.number().int().nonnegative(),
+  outcomes: z
+    .object({
+      ok: z.number().int().nonnegative(),
+      slow: z.number().int().nonnegative(),
+      blocked: z.number().int().nonnegative(),
+      rateLimited: z.number().int().nonnegative(),
+      http5xx: z.number().int().nonnegative(),
+      network: z.number().int().nonnegative(),
+    })
+    .optional(),
 });
 
 const hourlyHistoryResponseSchema = z.object({

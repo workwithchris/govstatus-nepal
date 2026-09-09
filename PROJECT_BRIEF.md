@@ -1,6 +1,6 @@
-# GovStatus Nepal — Full Project Brief
+# IsGovOnline — Full Project Brief
 
-Authoritative summary of the GovStatus Nepal codebase for AI assistants and new
+Authoritative summary of the IsGovOnline codebase for AI assistants and new
 contributors. Supersedes/expands `README.md` with implementation detail, wiring,
 and production-env knowledge. Read this first, then `AGENTS.md` (agent rules +
 non-obvious wiring), then `DESIGN.md` (visual language) for UI work.
@@ -9,14 +9,14 @@ non-obvious wiring), then `DESIGN.md` (visual language) for UI work.
 
 ## 1. What this is
 
-**GovStatus Nepal** is a real-time uptime monitor, health checker, and
+**IsGovOnline** is a real-time uptime monitor, health checker, and
 reliability tracker for Nepal's government portals and digital public services
 (145 services as of this writing). It probes each service every 5 minutes,
 classifies it `operational` / `degraded` / `down`, and persists hourly-bucket
 history in Cloudflare D1 for **90 days** so users see long-term uptime trends,
 not just a live snapshot.
 
-Live URL: `https://govstatusnepal.techyatraa.com`
+Live URL: `https://isgovonline.techyatraa.com`
 
 ### Core principle — vantage point honesty
 
@@ -341,7 +341,7 @@ progress endpoint reports `done` immediately so it never hammers.
 
 `layout.tsx`: metadata, OpenGraph, Twitter card, JSON-LD (`WebSite` +
 `Organization`). `robots.ts`, `sitemap.ts`, canonical to
-`https://govstatusnepal.techyatraa.com`. `public/_headers` caches
+`https://isgovonline.techyatraa.com`. `public/_headers` caches
 `/_next/static/*` immutable.
 
 ---

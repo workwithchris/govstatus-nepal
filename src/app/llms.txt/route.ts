@@ -12,7 +12,7 @@ export function GET() {
     )
     .join("\n");
 
-  const body = `# GovStatus Nepal
+  const body = `# IsGovOnline
 
 > Real-time uptime monitor, health checker, and reliability tracker for Nepal's government portals and digital public services. Every 5 minutes, government websites — citizen services, ministries, banks, universities, municipalities, provinces — are checked from a Nepal vantage point and reported as operational, degraded, or down.
 
@@ -38,8 +38,6 @@ Statuses are operational (responding under 3.5s), degraded (slow, 403/WAF-blocke
 - [Dashboard](${SITE_URL}): all services, live summary, search and filters
 - [About](${SITE_URL}/about): why the tracker exists and methodology
 - [Incidents RSS](${SITE_URL}/feed.xml): recent outages and degradations
-- [Live API](${SITE_URL}/api/health): full current snapshot as JSON (summary, per-service status, 24h history)
-- [API diagnostics](${SITE_URL}/api/diag): data source and freshness
 
 ## Example questions this site can answer
 

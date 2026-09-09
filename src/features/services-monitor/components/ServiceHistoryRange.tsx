@@ -85,6 +85,26 @@ function ktStamp(iso: string): string {
   return `${dateLabel}, ${ktTime(iso)}`;
 }
 
+const OUTCOME_LABELS: Record<string, string> = {
+  ok: "ok",
+  slow: "slow",
+  blocked: "403 blocked",
+  rateLimited: "429 rate-limited",
+  http5xx: "5xx error",
+  network: "network failure",
+};
+
+function formatOutcomes(
+  outcomes: NonNullable<HourlyBucket["outcomes"]>
+): string | null {
+  const parts: string[] = [];
+  for (const key of Object.keys(outcomes)) {
+    const count = outcomes[key as keyof typeof outcomes];
+    if (count > 0) parts.push(`${count} ${OUTCOME_LABELS[key] ?? key}`);
+  }
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
 function utcDateLabel(dayKey: string): string {
   return new Date(`${dayKey}T00:00:00Z`).toLocaleDateString("en-US", {
     timeZone: "UTC",
@@ -331,8 +351,13 @@ export function ServiceHistoryRange({
 
   const points = useMemo<UnitPoint[]>(() => {
     if (range.hourly) {
+      const outcomeByStart = new Map(
+        (hourly.data ?? []).map((b) => [Date.parse(b.bucket), b.outcomes])
+      );
       return hourCells.map((cell) => {
         const meta = cell.status ? STATUS_META[cell.status] : null;
+        const outcomes = outcomeByStart.get(Date.parse(cell.timestamp));
+        const outcomeText = outcomes ? formatOutcomes(outcomes) : null;
         const title = `${ktStamp(cell.timestamp)} — ${
           meta
             ? meta.label +
@@ -340,7 +365,7 @@ export function ServiceHistoryRange({
                 ? ` (${formatLatency(cell.responseTime)})`
                 : "")
             : "No data"
-        }`;
+        }${outcomeText ? ` · ${outcomeText}` : ""}`;
         return {
           id: cell.timestamp,
           status: cell.status,
@@ -371,7 +396,7 @@ export function ServiceHistoryRange({
         ms: record?.averageResponseTime ?? null,
       };
     });
-  }, [range, hourCells, daily.data]);
+  }, [range, hourCells, hourly.data, daily.data]);
 
   const summary = useMemo(() => {
     if (range.hourly) {

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * GovStatus Nepal — Nepal-vantage probe.
+ * IsGovOnline — Nepal-vantage probe.
  *
  * Standalone Node script meant to run on a machine with a Nepal IP
  * (VPS, home server, or dev laptop) via cron/systemd. It probes every
@@ -464,39 +464,77 @@ async function main() {
     return;
   }
 
-  const statements = [];
-  for (const { seed, probe } of results) {
-    statements.push({
-      sql: `INSERT INTO status_checks (service_id, bucket_ms, worst_status, sample_count, sum_response_ms, checked_at_ms)
-            VALUES (?, ?, ?, 1, ?, ?)
-            ON CONFLICT(service_id, bucket_ms) DO UPDATE SET
-              worst_status = CASE
-                WHEN worst_status = 'down' OR excluded.worst_status = 'down' THEN 'down'
-                WHEN worst_status = 'degraded' OR excluded.worst_status = 'degraded' THEN 'degraded'
-                ELSE 'operational' END,
-              sample_count = sample_count + 1,
-              sum_response_ms = sum_response_ms + excluded.sum_response_ms,
-              checked_at_ms = excluded.checked_at_ms`,
-      params: [seed.id, bucketMs, probe.status, probe.responseTime ?? 0, checkedAtMs],
-    });
-    statements.push({
-      sql: `INSERT INTO service_meta
-              (service_id, last_status, last_checked_at_ms, cert_expires_at_ms, cert_checked_at_ms)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(service_id) DO UPDATE SET
-              last_status = excluded.last_status,
-              last_checked_at_ms = excluded.last_checked_at_ms,
-              cert_expires_at_ms = COALESCE(excluded.cert_expires_at_ms, service_meta.cert_expires_at_ms),
-              cert_checked_at_ms = COALESCE(excluded.cert_checked_at_ms, service_meta.cert_checked_at_ms)`,
-      params: [seed.id, probe.status, checkedAtMs, certs.get(seed.id) ?? null, certs.has(seed.id) ? checkedAtMs : null],
-    });
+  const OUTCOME_COLS = ["outcome_ok", "outcome_slow", "outcome_blocked", "outcome_rate_limited", "outcome_http5xx", "outcome_network"];
+  // Mirrors src/features/services-monitor/server/outcomes.ts. Keep in sync.
+  function outcomeColForProbe(probe) {
+    const http = probe.httpStatus;
+    if (http === 403) return "outcome_blocked";
+    if (http === 429) return "outcome_rate_limited";
+    if (http !== null && http >= 500) return "outcome_http5xx";
+    if (probe.status === "down") return "outcome_network";
+    if (probe.status === "degraded") return "outcome_slow";
+    return "outcome_ok";
   }
-  statements.push({
-    sql: "DELETE FROM status_checks WHERE bucket_ms < ?",
-    params: [checkedAtMs - RETENTION_DAYS * 24 * HOUR_MS],
-  });
 
-  await batch(statements);
+  const buildStatements = (withOutcomes) => {
+    const statements = [];
+    for (const { seed, probe } of results) {
+      if (withOutcomes) {
+        const outcome = OUTCOME_COLS.map((col) => (outcomeColForProbe(probe) === col ? 1 : 0));
+        statements.push({
+          sql: `INSERT INTO status_checks (service_id, bucket_ms, worst_status, sample_count, sum_response_ms, checked_at_ms, ${OUTCOME_COLS.join(", ")})
+                VALUES (?, ?, ?, 1, ?, ?, ${OUTCOME_COLS.map(() => "?").join(", ")})
+                ON CONFLICT(service_id, bucket_ms) DO UPDATE SET
+                  worst_status = CASE
+                    WHEN worst_status = 'down' OR excluded.worst_status = 'down' THEN 'down'
+                    WHEN worst_status = 'degraded' OR excluded.worst_status = 'degraded' THEN 'degraded'
+                    ELSE 'operational' END,
+                  sample_count = sample_count + 1,
+                  sum_response_ms = sum_response_ms + excluded.sum_response_ms,
+                  checked_at_ms = excluded.checked_at_ms,
+                  ${OUTCOME_COLS.map((col) => `${col} = ${col} + excluded.${col}`).join(", ")}`,
+          params: [seed.id, bucketMs, probe.status, probe.responseTime ?? 0, checkedAtMs, ...outcome],
+        });
+      } else {
+        statements.push({
+          sql: `INSERT INTO status_checks (service_id, bucket_ms, worst_status, sample_count, sum_response_ms, checked_at_ms)
+                VALUES (?, ?, ?, 1, ?, ?)
+                ON CONFLICT(service_id, bucket_ms) DO UPDATE SET
+                  worst_status = CASE
+                    WHEN worst_status = 'down' OR excluded.worst_status = 'down' THEN 'down'
+                    WHEN worst_status = 'degraded' OR excluded.worst_status = 'degraded' THEN 'degraded'
+                    ELSE 'operational' END,
+                  sample_count = sample_count + 1,
+                  sum_response_ms = sum_response_ms + excluded.sum_response_ms,
+                  checked_at_ms = excluded.checked_at_ms`,
+          params: [seed.id, bucketMs, probe.status, probe.responseTime ?? 0, checkedAtMs],
+        });
+      }
+      statements.push({
+        sql: `INSERT INTO service_meta
+                (service_id, last_status, last_checked_at_ms, cert_expires_at_ms, cert_checked_at_ms)
+              VALUES (?, ?, ?, ?, ?)
+              ON CONFLICT(service_id) DO UPDATE SET
+                last_status = excluded.last_status,
+                last_checked_at_ms = excluded.last_checked_at_ms,
+                cert_expires_at_ms = COALESCE(excluded.cert_expires_at_ms, service_meta.cert_expires_at_ms),
+                cert_checked_at_ms = COALESCE(excluded.cert_checked_at_ms, service_meta.cert_checked_at_ms)`,
+        params: [seed.id, probe.status, checkedAtMs, certs.get(seed.id) ?? null, certs.has(seed.id) ? checkedAtMs : null],
+      });
+    }
+    statements.push({
+      sql: "DELETE FROM status_checks WHERE bucket_ms < ?",
+      params: [checkedAtMs - RETENTION_DAYS * 24 * HOUR_MS],
+    });
+    return statements;
+  };
+
+  try {
+    await batch(buildStatements(true));
+  } catch (err) {
+    console.warn("[nepal-probe] outcome columns missing on this DB — retrying without outcome counters:", err?.message ?? err);
+    await batch(buildStatements(false));
+  }
 
   // Transitions → alert webhook (same payload shape as the app).
   const events = [];
@@ -568,8 +606,8 @@ async function notifySubscribers(events) {
           `[${e.currentStatus.toUpperCase()}] ${e.name} — ${e.url} (was ${e.previousStatus ?? "unknown"}, http ${e.httpStatus ?? "—"})`
       )
       .join("\n");
-    const unsub = `https://govstatusnepal.techyatraa.com/?unsub=${encodeURIComponent(email)}`;
-    const text = `${lines}\n\nGovStatus Nepal\nUnsubscribe: ${unsub}`;
+    const unsub = `https://isgovonline.techyatraa.com/?unsub=${encodeURIComponent(email)}`;
+    const text = `${lines}\n\nIsGovOnline\nUnsubscribe: ${unsub}`;
     try {
       const res = await fetch(endpoint, {
         method: "POST",
@@ -579,8 +617,8 @@ async function notifySubscribers(events) {
         },
         body: JSON.stringify({
           to: email,
-          from: { address: from, name: "GovStatus Nepal" },
-          subject: `[GovStatus] ${userEvents.length} service update${userEvents.length > 1 ? "s" : ""}`,
+          from: { address: from, name: "IsGovOnline" },
+          subject: `[IsGovOnline] ${userEvents.length} service update${userEvents.length > 1 ? "s" : ""}`,
           text,
           headers: { "List-Unsubscribe": `<${unsub}>` },
         }),

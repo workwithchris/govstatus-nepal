@@ -6,7 +6,7 @@ import { STATUS_META } from "@/features/services-monitor/components/status-meta"
 export const metadata: Metadata = {
   title: "About",
   description:
-    "Why GovStatus Nepal exists — an independent uptime tracker for Nepal's digital public services, and how it works.",
+    "IsGovOnline exists — an independent uptime tracker for Nepal's digital public services, and how it works.",
 };
 
 const SECTION_ICON = "size-4 shrink-0 text-muted-foreground";
@@ -16,7 +16,7 @@ export default function AboutPage() {
     <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 lg:py-14">
       <header className="mb-10 space-y-3">
         <p className="font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          About · GovStatus Nepal
+          About · IsGovOnline
         </p>
         <h1 className="text-4xl font-semibold leading-none tracking-[-0.05em] text-foreground sm:text-5xl">
           Why this exists
@@ -109,8 +109,7 @@ export default function AboutPage() {
             <p className="text-xs text-muted-foreground">
               A service that works from your ISP may show as down from our
               vantage point (or the reverse) — many .np portals filter traffic
-              by region. We report what we measure, and the raw data is
-              available through the public API.
+              by region. We report what we measure, honestly.
             </p>
           </div>
         </section>

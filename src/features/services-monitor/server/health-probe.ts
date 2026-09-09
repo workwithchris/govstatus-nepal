@@ -6,6 +6,11 @@ import { Agent, fetch as undiciFetch } from "undici";
 import seedData from "@/data/seed-services.json";
 import { d1Batch, d1Config, d1Query, isD1Available } from "@/lib/d1";
 import {
+  OUTCOME_COLUMNS,
+  OUTCOME_ORDER,
+  outcomeFor,
+} from "@/features/services-monitor/server/outcomes";
+import {
   healthResponseSchema,
   seedServiceSchema,
   type HealthResponse,
@@ -581,20 +586,55 @@ async function d1BatchChunked(
  * Persist this cycle: upsert each service's current hour bucket (worst-status
  * aggregation), refresh per-service meta (current status + refreshed certs),
  * and prune buckets older than the retention window. All in one batch.
+ *
+ * When the bucket row carries outcome-counter columns (schema.sql), each
+ * sample also increments the matching outcome counter so the history API can
+ * tell a 5xx outage from a firewall block. On a pre-migration DB the extended
+ * INSERT fails and the batch is retried with the legacy SQL, so probing never
+ * breaks because the columns are missing.
  */
 export async function persistChecks(
   services: ServiceHealth[],
   checkedAtMs: number,
   certRefreshes: Map<string, number>
 ): Promise<void> {
-  const statements: { sql: string; params: unknown[] }[] = [];
-
   const bucketMs = Math.floor(checkedAtMs / HOUR_MS) * HOUR_MS;
 
-  for (const service of services) {
-    statements.push({
-      sql: `INSERT INTO status_checks (service_id, bucket_ms, worst_status, sample_count, sum_response_ms, checked_at_ms)
-            VALUES (?, ?, ?, 1, ?, ?)
+  const statusStatement = (service: ServiceHealth, withOutcomes: boolean) => {
+    if (!withOutcomes) {
+      return {
+        sql: `INSERT INTO status_checks (service_id, bucket_ms, worst_status, sample_count, sum_response_ms, checked_at_ms)
+              VALUES (?, ?, ?, 1, ?, ?)
+              ON CONFLICT(service_id, bucket_ms) DO UPDATE SET
+                worst_status = CASE
+                  WHEN worst_status = 'down' OR excluded.worst_status = 'down' THEN 'down'
+                  WHEN worst_status = 'degraded' OR excluded.worst_status = 'degraded' THEN 'degraded'
+                  ELSE 'operational' END,
+                sample_count = sample_count + 1,
+                sum_response_ms = sum_response_ms + excluded.sum_response_ms,
+                checked_at_ms = excluded.checked_at_ms`,
+        params: [
+          service.id,
+          bucketMs,
+          service.status,
+          service.responseTime ?? 0,
+          checkedAtMs,
+        ],
+      };
+    }
+
+    const outcomeCols = OUTCOME_ORDER.map((key) => OUTCOME_COLUMNS[key]).join(
+      ", "
+    );
+    const outcomeKeys = OUTCOME_ORDER.map(
+      (key) => OUTCOME_COLUMNS[key] + " = " + OUTCOME_COLUMNS[key] + " + excluded." + OUTCOME_COLUMNS[key]
+    );
+    const outcome = OUTCOME_ORDER.map((key) =>
+      outcomeFor(service.status, service.httpStatus) === key ? 1 : 0
+    );
+    return {
+      sql: `INSERT INTO status_checks (service_id, bucket_ms, worst_status, sample_count, sum_response_ms, checked_at_ms, ${outcomeCols})
+            VALUES (?, ?, ?, 1, ?, ?, ${outcome.map(() => "?").join(", ")})
             ON CONFLICT(service_id, bucket_ms) DO UPDATE SET
               worst_status = CASE
                 WHEN worst_status = 'down' OR excluded.worst_status = 'down' THEN 'down'
@@ -602,41 +642,59 @@ export async function persistChecks(
                 ELSE 'operational' END,
               sample_count = sample_count + 1,
               sum_response_ms = sum_response_ms + excluded.sum_response_ms,
-              checked_at_ms = excluded.checked_at_ms`,
+              checked_at_ms = excluded.checked_at_ms,
+              ${outcomeKeys.join(", ")}`,
       params: [
         service.id,
         bucketMs,
         service.status,
         service.responseTime ?? 0,
         checkedAtMs,
+        ...outcome,
       ],
-    });
+    };
+  };
 
-    statements.push({
-      sql: `INSERT INTO service_meta
-              (service_id, last_status, last_checked_at_ms, cert_expires_at_ms, cert_checked_at_ms)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(service_id) DO UPDATE SET
-              last_status = excluded.last_status,
-              last_checked_at_ms = excluded.last_checked_at_ms,
-              cert_expires_at_ms = COALESCE(excluded.cert_expires_at_ms, service_meta.cert_expires_at_ms),
-              cert_checked_at_ms = COALESCE(excluded.cert_checked_at_ms, service_meta.cert_checked_at_ms)`,
-      params: [
-        service.id,
-        service.status,
-        checkedAtMs,
-        certRefreshes.get(service.id) ?? null,
-        certRefreshes.has(service.id) ? Date.now() : null,
-      ],
-    });
-  }
-
-  statements.push({
-    sql: "DELETE FROM status_checks WHERE bucket_ms < ?",
-    params: [checkedAtMs - RETENTION_DAYS * 24 * HOUR_MS],
+  const metaStatement = (service: ServiceHealth) => ({
+    sql: `INSERT INTO service_meta
+            (service_id, last_status, last_checked_at_ms, cert_expires_at_ms, cert_checked_at_ms)
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(service_id) DO UPDATE SET
+            last_status = excluded.last_status,
+            last_checked_at_ms = excluded.last_checked_at_ms,
+            cert_expires_at_ms = COALESCE(excluded.cert_expires_at_ms, service_meta.cert_expires_at_ms),
+            cert_checked_at_ms = COALESCE(excluded.cert_checked_at_ms, service_meta.cert_checked_at_ms)`,
+    params: [
+      service.id,
+      service.status,
+      checkedAtMs,
+      certRefreshes.get(service.id) ?? null,
+      certRefreshes.has(service.id) ? Date.now() : null,
+    ],
   });
 
-  await d1BatchChunked(statements);
+  const prune = {
+    sql: "DELETE FROM status_checks WHERE bucket_ms < ?",
+    params: [checkedAtMs - RETENTION_DAYS * 24 * HOUR_MS],
+  };
+
+  const build = (withOutcomes: boolean) => [
+    ...services.flatMap((service) => [
+      statusStatement(service, withOutcomes),
+      metaStatement(service),
+    ]),
+    prune,
+  ];
+
+  try {
+    await d1BatchChunked(build(true));
+  } catch (err) {
+    console.error(
+      "[govstatus] outcome-column write failed (legacy DB?), retrying without:",
+      err
+    );
+    await d1BatchChunked(build(false));
+  }
 }
 
 export function buildHistory(

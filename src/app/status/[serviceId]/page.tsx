@@ -7,6 +7,7 @@ import seedData from "@/data/seed-services.json";
 import { seedServiceSchema } from "@/features/services-monitor/types";
 import { getServicesHealth } from "@/features/services-monitor/server/health-probe";
 import { ServiceHistoryRange } from "@/features/services-monitor/components/ServiceHistoryRange";
+import { ReliabilitySummary } from "@/features/services-monitor/components/ReliabilitySummary";
 import {
   buildServiceJsonLd,
   buildServiceMetadata,
@@ -120,6 +121,8 @@ export default async function ServiceStatusPage({ params }: Props) {
         </p>
       </section>
 
+      <ReliabilitySummary serviceId={service.id} />
+
       {/* Crawlable static context */}
       <section className="mt-10 space-y-4 text-sm leading-relaxed text-muted-foreground">
         <h2 className="text-xl font-semibold tracking-[-0.02em] text-foreground">
@@ -136,7 +139,7 @@ export default async function ServiceStatusPage({ params }: Props) {
           >
             {service.url}
           </a>
-          , part of GovStatus Nepal&apos;s {seed.category} category.
+          , part of IsGovOnline&apos;s {seed.category} category.
         </p>
         <p>
           Every 5 minutes the service is checked from a Nepal vantage point and
@@ -174,6 +177,18 @@ export default async function ServiceStatusPage({ params }: Props) {
           className="rounded-md border border-border px-3 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           How status is measured
+        </Link>
+        <Link
+          href="/methodology"
+          className="rounded-md border border-border px-3 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Methodology
+        </Link>
+        <Link
+          href="/worst"
+          className="rounded-md border border-border px-3 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Reliability ranking
         </Link>
         <a
           href="/feed.xml"
