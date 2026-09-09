@@ -41,7 +41,7 @@ export function Footer() {
           </nav>
         </div>
         <p className="font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Probes refresh every 5 min
+          🇳🇵 Probes refresh every 5 min
         </p>
       </div>
     </footer>

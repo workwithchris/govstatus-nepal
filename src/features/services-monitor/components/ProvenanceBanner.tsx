@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Info, MapPin } from "lucide-react";
+import { Info } from "lucide-react";
 
 import { useServicesHealth } from "@/features/services-monitor/api/useServicesHealth";
 import { useLang } from "@/lib/i18n";
@@ -44,8 +44,7 @@ export function ProvenanceBanner() {
         .
       </span>
       <span className="inline-flex items-center gap-1">
-        <MapPin className="size-3.5" aria-hidden />
-        Down may mean unreachable from the probe, not from your ISP.
+        🇳🇵 Down may mean unreachable from the probe, not from your ISP.
       </span>
     </p>
   );

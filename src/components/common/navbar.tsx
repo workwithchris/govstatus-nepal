@@ -14,7 +14,7 @@ export function Navbar() {
         <Link href="/" className="flex min-w-0 items-center gap-2">
           <Activity className="size-5 shrink-0 text-foreground" aria-hidden />
           <span className="truncate text-base font-semibold tracking-tight text-foreground">
-            IsGovOnline
+            🇳🇵 IsGovOnline
           </span>
         </Link>
 

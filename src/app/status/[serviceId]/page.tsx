@@ -65,7 +65,7 @@ export default async function ServiceStatusPage({ params }: Props) {
 
       <header className="mt-4 space-y-3">
         <p className="font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {seed.category} · Monitored every 5 minutes from Nepal
+          {seed.category} · 🇳🇵 Monitored every 5 minutes from Nepal
         </p>
         <h1 className="text-4xl font-semibold leading-none tracking-[-0.05em] text-foreground sm:text-5xl">
           Is {service.name} down?

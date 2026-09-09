@@ -47,7 +47,7 @@ export default function DashboardPage() {
       />
       <header className="mb-10 max-w-2xl space-y-3">
         <p className="font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Real-time monitoring · Digital Nepal
+          Real-time monitoring · 🇳🇵 Digital Nepal
         </p>
         <h1 className="text-4xl font-semibold leading-none tracking-[-0.05em] text-foreground sm:text-5xl">
           Is the government{" "}

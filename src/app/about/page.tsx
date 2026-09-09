@@ -78,7 +78,7 @@ export default function AboutPage() {
         <section className="space-y-2">
           <h2 className="flex items-center gap-2 text-lg font-semibold tracking-[-0.02em] text-foreground">
             <MapPin className={SECTION_ICON} aria-hidden />
-            How status is measured
+            🇳🇵 How status is measured
           </h2>
           <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
             <p>
