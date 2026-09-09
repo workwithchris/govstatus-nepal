@@ -11,8 +11,6 @@ export type Lang = "en" | "ne";
 
 const STRINGS = {
   en: {
-    "nav.services": "Services",
-    "nav.metrics": "Metrics",
     "nav.about": "About",
     "tab.dashboard": "Dashboard",
     "tab.analytics": "Analytics",
@@ -50,8 +48,6 @@ const STRINGS = {
     "probe.loading": "Checking services…",
   },
   ne: {
-    "nav.services": "सेवाहरू",
-    "nav.metrics": "तथ्याङ्क",
     "nav.about": "बारेमा",
     "tab.dashboard": "ड्यासबोर्ड",
     "tab.analytics": "विश्लेषण",
