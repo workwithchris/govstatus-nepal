@@ -21,6 +21,9 @@
 # wrangler local dev state (miniflare, logs)
 /.wrangler/
 
+# probe runtime state (adaptive backoff persists between cron runs)
+/probe/cadence-state.json
+
 # production
 /build
 

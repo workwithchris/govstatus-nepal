@@ -17,7 +17,7 @@
  *
  * Dry run (probe only, no D1 writes): node probe/nepal-probe.mjs --dry-run
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, renameSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import crypto from "node:crypto";
@@ -323,29 +323,144 @@ async function batch(statements) {
   }
 }
 
+/* -------------------------- adaptive probe cadence ------------------------- */
+
+/**
+ * Anti-blocking pacing for government WAFs (mirrors the app's
+ * health-probe.ts cadence logic). Two problems it solves:
+ *
+ *  1. **Lockstep bursts** — pinging all services every 5 min from one Nepal
+ *     IP at :00/:05/:10 looks like a crawler. Each service gets a
+ *     deterministic `phase` (0..7), so once backed off, services spread
+ *     across cycles instead of re-pinging together.
+ *  2. **No relief when throttled** — a portal that 429s/403s you was hit
+ *     again 5 minutes later. After 2 consecutive stressful outcomes the
+ *     service's `shift` rises (probe every 2nd, 4th, 8th cycle); it drops
+ *     back down after 2 consecutive healthy responses.
+ *
+ * The cron script is a *new process every run*, so backoff state is
+ * persisted to `cadence-state.json` (gitignored) next to this script and
+ * atomically rewritten each cycle. Skipped services keep their last
+ * persisted status from D1 — nothing fabricated, just an older timestamp.
+ */
+const CADENCE_FILE = join(__dirname, "cadence-state.json");
+const CADENCE_MAX_SHIFT = 3;
+const CADENCE_STRESS_THRESHOLD = 2;
+const CADENCE_RECOVERY_HITS = 2;
+const PROBE_CYCLE_MS = 5 * 60 * 1000;
+
+function hashSeed(input) {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash * 31 + input.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+function probePhase(seedId) {
+  return hashSeed(seedId) % (1 << CADENCE_MAX_SHIFT);
+}
+
+function cycleIndex(nowMs) {
+  return Math.floor(nowMs / PROBE_CYCLE_MS);
+}
+
+function isProbeDue(state, cycle, phase) {
+  const stride = 1 << state.shift;
+  return (cycle + phase) % stride === 0;
+}
+
+/** Outcomes that look like the origin throttling us: down, 403 (WAF), 429. */
+function isStressful(probe) {
+  return (
+    probe.status === "down" ||
+    probe.httpStatus === 403 ||
+    probe.httpStatus === 429
+  );
+}
+
+function updateCadence(prev, stressful) {
+  if (stressful) {
+    const stress = prev.stress + 1;
+    return {
+      shift:
+        stress >= CADENCE_STRESS_THRESHOLD
+          ? Math.min(prev.shift + 1, CADENCE_MAX_SHIFT)
+          : prev.shift,
+      stress: stress >= CADENCE_STRESS_THRESHOLD ? 0 : stress,
+      healthy: 0,
+    };
+  }
+  const healthy = prev.healthy + 1;
+  return {
+    shift:
+      healthy >= CADENCE_RECOVERY_HITS
+        ? Math.max(prev.shift - 1, 0)
+        : prev.shift,
+    stress: 0,
+    healthy: healthy >= CADENCE_RECOVERY_HITS ? 0 : healthy,
+  };
+}
+
+function loadCadence() {
+  try {
+    return JSON.parse(readFileSync(CADENCE_FILE, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function saveCadence(cadence) {
+  if (DRY_RUN) return; // dry-run never mutates state
+  try {
+    const tmp = `${CADENCE_FILE}.tmp`;
+    writeFileSync(tmp, JSON.stringify(cadence));
+    renameSync(tmp, CADENCE_FILE); // atomic — overlapping cron runs can't half-write
+  } catch (err) {
+    console.error("[nepal-probe] cadence save failed:", err);
+  }
+}
+
 /* -------------------------------- cycle ---------------------------------- */
 
 async function main() {
   const checkedAt = new Date().toISOString();
   const checkedAtMs = Date.parse(checkedAt);
   const bucketMs = Math.floor(checkedAtMs / HOUR_MS) * HOUR_MS;
+  const cycle = cycleIndex(checkedAtMs);
+
+  const cadence = loadCadence();
+  const dueSeeds = seeds.filter((seed) => {
+    const state = cadence[seed.id] ?? { shift: 0, stress: 0, healthy: 0 };
+    return isProbeDue(state, cycle, probePhase(seed.id));
+  });
+  const skippedSeeds = seeds.filter((seed) => !dueSeeds.includes(seed));
 
   const [metaRows, certResults] = await Promise.all([
     d1Config ? query("SELECT service_id, last_status, cert_expires_at_ms FROM service_meta") : Promise.resolve([]),
-    mapLimit(seeds, 15, async (s) => ({ id: s.id, expiresMs: await probeCertExpiryMs(s.url) })),
+    mapLimit(dueSeeds, 15, async (s) => ({ id: s.id, expiresMs: await probeCertExpiryMs(s.url) })),
   ]);
   const prevMeta = new Map(metaRows.map((r) => [r.service_id, r]));
 
-  const results = await mapLimit(seeds, 15, async (seed) => {
+  const results = await mapLimit(dueSeeds, 15, async (seed) => {
     const probe = await probeService(seed.url, seed.checkUrl);
+    cadence[seed.id] = updateCadence(
+      cadence[seed.id] ?? { shift: 0, stress: 0, healthy: 0 },
+      isStressful(probe)
+    );
     return { seed, probe };
   });
 
+  // Backed-off services keep their last persisted status in D1 — no new
+  // sample is written this cycle (the hourly bucket simply gets no extra
+  // row), so the dashboard shows them with an older `lastChecked`, honestly.
+
+  saveCadence(cadence);
   const certs = new Map(certResults.filter((c) => c.expiresMs !== null).map((c) => [c.id, c.expiresMs]));
 
   if (DRY_RUN) {
     const count = (s) => results.filter((r) => r.probe.status === s).length;
-    console.log(`[dry-run] ${checkedAt} · total=${seeds.length} operational=${count("operational")} degraded=${count("degraded")} down=${count("down")} certs=${certs.size}`);
+    console.log(`[dry-run] ${checkedAt} · total=${seeds.length} probed=${results.length} skipped=${skippedSeeds.length} operational=${count("operational")} degraded=${count("degraded")} down=${count("down")} certs=${certs.size}`);
     return;
   }
 
@@ -412,7 +527,7 @@ async function main() {
 
   const count = (s) => results.filter((r) => r.probe.status === s).length;
   console.log(
-    `[nepal-probe] ${checkedAt} · vantage=${env.VANTAGE_NAME ?? "default"} bucket=${bucketMs} operational=${count("operational")} degraded=${count("degraded")} down=${count("down")} certs=${certs.size} alerts=${events.length} emails=${emailSent}`
+    `[nepal-probe] ${checkedAt} · vantage=${env.VANTAGE_NAME ?? "default"} bucket=${bucketMs} probed=${results.length} skipped=${skippedSeeds.length} operational=${count("operational")} degraded=${count("degraded")} down=${count("down")} certs=${certs.size} alerts=${events.length} emails=${emailSent}`
   );
 }
 

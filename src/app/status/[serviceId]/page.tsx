@@ -2,10 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { SITE_URL } from "@/lib/site";
 import { decodeHistory } from "@/lib/utils";
 import seedData from "@/data/seed-services.json";
+import { seedServiceSchema } from "@/features/services-monitor/types";
 import { getServicesHealth } from "@/features/services-monitor/server/health-probe";
+import {
+  buildServiceJsonLd,
+  buildServiceMetadata,
+  statusSentence,
+} from "@/features/services-monitor/server/service-seo";
 import { STATUS_META } from "@/features/services-monitor/components/status-meta";
 
 // Rendered per request (module cache dedupes the D1 read across requests —
@@ -13,33 +18,20 @@ import { STATUS_META } from "@/features/services-monitor/components/status-meta"
 // returns complete crawlable HTML; the CDN + D1 snapshot cache absorb load.
 export const dynamic = "force-dynamic";
 
+const seeds = seedServiceSchema.array().parse(seedData);
+
 type Props = { params: Promise<{ serviceId: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { serviceId } = await params;
-  const service = seedData.find((s) => s.id === serviceId);
+  const service = seeds.find((s) => s.id === serviceId);
 
   if (!service) return { title: "Service not found" };
 
-  const description = `Is ${service.name} down? Live status, 24-hour uptime and reliability for ${service.name} (${service.url}). Monitored every 5 minutes from Nepal.`;
-
-  return {
-    title: `Is ${service.name} down? Status & uptime`,
-    description,
-    alternates: { canonical: `/status/${service.id}` },
-    openGraph: {
-      type: "website",
-      url: `${SITE_URL}/status/${service.id}`,
-      siteName: "GovStatus Nepal",
-      title: `Is ${service.name} down?`,
-      description,
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: `Is ${service.name} down?`,
-      description,
-    },
-  };
+  // Live status feeds the metadata so the SERP snippet mirrors reality.
+  const { services } = await getServicesHealth();
+  const live = services.find((s) => s.id === serviceId);
+  return buildServiceMetadata(service, live?.status ?? "operational");
 }
 
 export default async function ServiceStatusPage({ params }: Props) {
@@ -47,33 +39,13 @@ export default async function ServiceStatusPage({ params }: Props) {
   const { services } = await getServicesHealth();
   const service = services.find((s) => s.id === serviceId);
 
-  const seed = seedData.find((s) => s.id === serviceId);
+  const seed = seeds.find((s) => s.id === serviceId);
   if (!service || !seed) notFound();
 
   const meta = STATUS_META[service.status];
   const slots = decodeHistory(service.checkedAt, service.history, service.latencies);
-  const statusText =
-    service.status === "operational"
-      ? `${service.name} is online and responding normally.`
-      : service.status === "degraded"
-        ? `${service.name} is responding slowly or is partially blocked.`
-        : `${service.name} is down and unreachable right now.`;
-
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "GovernmentService",
-    name: service.name,
-    url: service.url,
-    serviceType: `Nepal government ${seed.category} portal`,
-    description: service.description,
-    provider: {
-      "@type": "Organization",
-      name: "GovStatus Nepal",
-      url: SITE_URL,
-    },
-    audience: { "@type": "Audience", audienceType: "Nepali citizens" },
-    areaServed: { "@type": "Country", name: "Nepal" },
-  };
+  const statusText = statusSentence(service.status, service.name);
+  const jsonLd = buildServiceJsonLd(seed);
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 lg:py-14">

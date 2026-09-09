@@ -330,6 +330,89 @@ export function worse(a: ProbeResult, b: ProbeResult): ProbeResult {
   return a;
 }
 
+/* -------------------------- Adaptive probe cadence ------------------------- */
+
+/**
+ * Anti-blocking pacing for government WAFs. Two problems it solves:
+ *
+ *  1. **Lockstep bursts** — probing all services every cycle at :00/:05/:10
+ *     from one IP looks like a crawler. Each service gets a deterministic
+ *     `phase` (0..7) so, once backed off, services are spread across cycles
+ *     instead of re-pinging together.
+ *  2. **No relief when throttled** — a portal that 429s/403s you was hit
+ *     again 5 minutes later. After `CADENCE_STRESS_THRESHOLD` consecutive
+ *     stressful outcomes the service's `shift` rises (probe every 2nd, 4th,
+ *     8th cycle); it drops back down after sustained healthy responses.
+ *
+ * A "skipped" service keeps its last persisted status from D1 — nothing is
+ * fabricated, the dashboard just shows it with an older `lastChecked`.
+ */
+export interface CadenceState {
+  /** 0 = every cycle, 1 = every 2nd, 2 = every 4th, 3 = every 8th cycle. */
+  shift: number;
+  /** Consecutive stressful probes since the last healthy one. */
+  stress: number;
+  /** Consecutive healthy probes since the last stressful one. */
+  healthy: number;
+}
+
+export const CADENCE_MAX_SHIFT = 3;
+export const CADENCE_STRESS_THRESHOLD = 2;
+export const CADENCE_RECOVERY_HITS = 2;
+/** Probe cycle length — must match the cron cadence (5 minutes). */
+export const PROBE_CYCLE_MS = 5 * 60 * 1000;
+
+/** Deterministic per-service phase so backed-off services aren't in lockstep. */
+export function probePhase(seedId: string): number {
+  return hashSeed(seedId) % (1 << CADENCE_MAX_SHIFT);
+}
+
+/** Cycle index from a timestamp (same value for overlapping cron runs). */
+export function cycleIndex(nowMs: number): number {
+  return Math.floor(nowMs / PROBE_CYCLE_MS);
+}
+
+export function isProbeDue(state: CadenceState, cycle: number, phase: number): boolean {
+  const stride = 1 << state.shift;
+  return (cycle + phase) % stride === 0;
+}
+
+/**
+ * Outcomes that look like the origin throttling us: a hard "down"
+ * (refused/timeout/5xx) or an explicit 403 (WAF block) / 429 (rate limit).
+ * Slow-but-responding (degraded by latency alone) is not backoff-worthy.
+ */
+export function isStressful(probe: ProbeResult): boolean {
+  return (
+    probe.status === "down" ||
+    probe.httpStatus === 403 ||
+    probe.httpStatus === 429
+  );
+}
+
+export function updateCadence(prev: CadenceState, stressful: boolean): CadenceState {
+  if (stressful) {
+    const stress = prev.stress + 1;
+    return {
+      shift:
+        stress >= CADENCE_STRESS_THRESHOLD
+          ? Math.min(prev.shift + 1, CADENCE_MAX_SHIFT)
+          : prev.shift,
+      stress: stress >= CADENCE_STRESS_THRESHOLD ? 0 : stress,
+      healthy: 0,
+    };
+  }
+  const healthy = prev.healthy + 1;
+  return {
+    shift:
+      healthy >= CADENCE_RECOVERY_HITS
+        ? Math.max(prev.shift - 1, 0)
+        : prev.shift,
+    stress: 0,
+    healthy: healthy >= CADENCE_RECOVERY_HITS ? 0 : healthy,
+  };
+}
+
 /* --------------------------- TLS certificate probe ------------------------- */
 
 /**
@@ -770,6 +853,10 @@ let lastPersistAt = 0;
 /** Last-loaded history index, reused between persist cycles. */
 let historyCache: HistoryIndex | null = null;
 
+/** Adaptive backoff state per service (see "Adaptive probe cadence"). */
+const cadenceState = new Map<string, CadenceState>();
+const freshCadence = (): CadenceState => ({ shift: 0, stress: 0, healthy: 0 });
+
 /** Live state of the running probe cycle, surfaced to the loader UI. */
 let currentProgress: ProbeProgress | null = null;
 let lastRun: ProbeProgress["lastRun"] = null;
@@ -854,11 +941,44 @@ async function mapLimit<T, R>(
     expiresMs: await probeCertExpiryMs(service.url),
   }));
 
+  const cycle = cycleIndex(checkedAtMs);
+
   const services = await mapLimit(seeds, 15, async (service) => {
+    const cadence = cadenceState.get(service.id) ?? freshCadence();
+
+    // Backed-off this cycle? Reuse the last persisted state and leave the
+    // origin alone — WAFs only calm down when the pinging stops.
+    if (!isProbeDue(cadence, cycle, probePhase(service.id))) {
+      const metaRow = prevMeta?.get(service.id);
+      const status: HealthStatus = metaRow?.last_status ?? "operational";
+      const uptime24h = buildHistory(
+        service,
+        { status, responseTime: null, httpStatus: null },
+        checkedAt,
+        realHistory?.get(service.id)
+      );
+      return {
+        ...service,
+        status,
+        responseTime: null,
+        httpStatus: null,
+        checkedAt: metaRow
+          ? new Date(metaRow.last_checked_at_ms).toISOString()
+          : checkedAt,
+        uptimePercentage: computeUptimePercentage(uptime24h),
+        certExpiresAt: null,
+        ...encodeHistory(uptime24h),
+      };
+    }
+
     const result = await checkService(
       service,
       checkedAt,
       realHistory?.get(service.id)
+    );
+    cadenceState.set(
+      service.id,
+      updateCadence(cadence, isStressful(result))
     );
     const progress = currentProgress!;
     progress.checked += 1;

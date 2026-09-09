@@ -276,6 +276,13 @@ Check the Worker secrets and `/api/diag`'s `databaseId` field.
   loading fine for citizens inside Nepal
 - Uptime percentages only count hours with recorded data (grey slots =
   no data yet)
+- **Adaptive probe cadence** — to avoid tripping government WAFs, a
+  service that returns repeated 403/429/down is backed off (probed every
+  2nd, then 4th, then 8th cycle) and recovers only after sustained healthy
+  responses. Backed-off services keep their last persisted status (with an
+  older timestamp — never fabricated). The cron script persists this state
+  in `probe/cadence-state.json` (gitignored) so it survives process
+  restarts; the app's `/api/probe` path keeps the same state in memory.
 
 ## License
 
