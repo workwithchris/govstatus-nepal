@@ -39,21 +39,12 @@ export const metadata: Metadata = {
     description:
       "Live uptime and health checks for Nepal's essential citizen, finance, and ministry portals — refreshed every 5 minutes.",
     locale: "en_NP",
-    images: [
-      {
-        url: "/og.svg",
-        width: 1200,
-        height: 630,
-        alt: "GovStatus Nepal — real-time government uptime monitor",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "GovStatus Nepal — Is the government online?",
     description:
       "Live uptime and health checks for Nepal's essential citizen, finance, and ministry portals.",
-    images: ["/og.svg"],
   },
 };
 
@@ -78,6 +69,7 @@ const structuredData = {
     {
       "@type": "Organization",
       name: "GovStatus Nepal",
+      alternateName: "नेपाल सरकार स्टेटस",
       url: SITE_URL,
       description:
         "Independent uptime tracker for Nepali government and public services.",
