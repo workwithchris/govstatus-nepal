@@ -1,6 +1,7 @@
 import { HomeTabs } from "@/features/services-monitor";
 import { ProvenanceBanner } from "@/features/services-monitor/components/ProvenanceBanner";
 import { CATEGORY_LABELS } from "@/features/services-monitor/components/status-meta";
+import { serviceCategorySchema } from "@/features/services-monitor/types";
 import { SITE_URL } from "@/lib/site";
 import seedData from "@/data/seed-services.json";
 
@@ -16,6 +17,13 @@ export default function DashboardPage() {
     },
     {}
   );
+
+  const knownOrder = serviceCategorySchema.options;
+  const knownCategories = knownOrder.filter((c) => byCategory[c]);
+  const extraCategories = Object.keys(byCategory).filter(
+    (c) => !knownOrder.includes(c as (typeof knownOrder)[number])
+  );
+  const categories = [...knownCategories, ...extraCategories];
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -74,25 +82,32 @@ export default function DashboardPage() {
         </p>
 
         <div className="mt-8 grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
-          {Object.entries(byCategory).map(([category, services]) => (
-            <div key={category}>
-              <h3 className="font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                {CATEGORY_LABELS[category] ?? category}
-              </h3>
-              <ul className="mt-3 space-y-1.5 text-sm">
-                {services.map((s) => (
-                  <li key={s.id}>
-                    <a
-                      href={`/status/${s.id}`}
-                      className="text-muted-foreground hover:text-foreground hover:underline underline-offset-2"
-                    >
-                      {s.name}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          {categories.map((category) => {
+            const services = byCategory[category];
+            const label = CATEGORY_LABELS[category] ?? category;
+            return (
+              <div key={category}>
+                <h3 className="flex items-baseline justify-between gap-2 font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {label}
+                  <span className="font-mono text-[10px] normal-case tracking-normal text-muted-foreground/60">
+                    {services.length}
+                  </span>
+                </h3>
+                <ul className="mt-3 space-y-1.5 text-sm">
+                  {services.map((service) => (
+                    <li key={service.id}>
+                      <a
+                        href={`/status/${service.id}`}
+                        className="text-muted-foreground transition-colors hover:text-foreground hover:underline underline-offset-2"
+                      >
+                        {service.name}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
         </div>
       </section>
     </main>

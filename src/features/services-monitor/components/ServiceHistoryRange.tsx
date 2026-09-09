@@ -1,11 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import {
   useServiceHistory,
   useServiceHourlyHistory,
-  type DailyHistory,
   type HourlyBucket,
 } from "@/features/services-monitor/api/useServiceHistory";
 import { STATUS_META } from "@/features/services-monitor/components/status-meta";
@@ -18,6 +26,16 @@ import { cn, formatLatency } from "@/lib/utils";
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 const TZ = "Asia/Kathmandu";
+
+const AXIS_TICK = { fontSize: 10, fill: "var(--muted-foreground)" };
+
+const TOOLTIP_STYLE = {
+  background: "var(--card)",
+  border: "1px solid var(--border)",
+  borderRadius: 10,
+  fontSize: 12,
+  color: "var(--foreground)",
+} as const;
 
 const RANGES = [
   { key: "24h", label: "24 hours", days: 1, hourly: true },
@@ -34,25 +52,27 @@ interface ServiceHistoryRangeProps {
   initialSlots: UptimeSlot[];
 }
 
+/** One coloured unit on the status band, with its matching latency sample. */
+interface UnitPoint {
+  id: string;
+  status: HealthStatus | null;
+  title: string;
+  /** Short x-axis label ("14:45" for hours, "Sep 8" for days). */
+  time: string;
+  /** Average response time in ms; null when nothing was recorded. */
+  ms: number | null;
+}
+
 function statusClass(status: HealthStatus | null): string {
   return status ? STATUS_META[status].bar : "bg-muted";
 }
 
-function ktParts(date: Date): { dayKey: string; hour: number } {
-  const parts = new Intl.DateTimeFormat("en-CA", {
+function ktTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("en-GB", {
     timeZone: TZ,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
     hour: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(date);
-  const get = (type: string) =>
-    parts.find((p) => p.type === type)?.value ?? "";
-  return {
-    dayKey: `${get("year")}-${get("month")}-${get("day")}`,
-    hour: Number(get("hour")),
-  };
+    minute: "2-digit",
+  });
 }
 
 function ktStamp(iso: string): string {
@@ -62,27 +82,40 @@ function ktStamp(iso: string): string {
     month: "short",
     day: "numeric",
   });
-  const timeLabel = date.toLocaleTimeString("en-GB", {
-    timeZone: TZ,
-    hour: "2-digit",
-    minute: "2-digit",
+  return `${dateLabel}, ${ktTime(iso)}`;
+}
+
+function utcDateLabel(dayKey: string): string {
+  return new Date(`${dayKey}T00:00:00Z`).toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    month: "short",
+    day: "numeric",
   });
-  return `${dateLabel}, ${timeLabel}`;
 }
 
-function weekdayDayLabel(dayKey: string): string {
-  return new Date(`${dayKey}T00:00:00Z`)
-    .toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", day: "numeric" })
-    .replace(",", "");
+function utcDateLong(dayKey: string): string {
+  return new Date(`${dayKey}T00:00:00Z`).toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
-function dayPosition(dayKey: string): { row: number; col: number } {
-  const [year, month, day] = dayKey.split("-").map(Number);
-  const epochDay = Math.floor(Date.UTC(year, month - 1, day) / DAY_MS);
-  return {
-    row: (epochDay + 3) % 7,
-    col: Math.floor((epochDay + 3) / 7),
-  };
+/** Calendar date keys (YYYY-MM-DD, UTC) for the last `days` days incl. today. */
+function utcDayAxis(days: number): string[] {
+  const now = new Date();
+  const todayStart = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate()
+  );
+  return Array.from(
+    { length: days },
+    (_, i) =>
+      new Date(todayStart - (days - 1 - i) * DAY_MS).toISOString().slice(0, 10)
+  );
 }
 
 function expandHourWindow(
@@ -103,229 +136,96 @@ function expandHourWindow(
   });
 }
 
-const HOUR_TICKS = [0, 6, 12, 18, 23];
-
-function HourGrid({
-  cells,
+function StatusBand({
+  points,
+  unit,
   serviceName,
 }: {
-  cells: UptimeSlot[];
+  points: UnitPoint[];
+  unit: string;
   serviceName: string;
 }) {
-  const rows = useMemo(() => {
-    const byDay = new Map<string, UptimeSlot[]>();
-    for (const cell of cells) {
-      const { dayKey } = ktParts(new Date(cell.timestamp));
-      const list = byDay.get(dayKey);
-      if (list) list.push(cell);
-      else byDay.set(dayKey, [cell]);
-    }
-    return [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [cells]);
-
-  const today = useMemo(() => ktParts(new Date()).dayKey, []);
-
+  // Sparse ranges (per-hour) get visible gaps; long per-day runs keep a
+  // hairline so the bar stays readable without turning into noise.
+  const gap = points.length <= 31 ? "gap-[2px]" : "gap-px";
   return (
     <div
       role="img"
-      aria-label={`Hourly heatmap for ${serviceName}, one square per hour, rows are days, columns are the 24 hours`}
-      className="overflow-x-auto pb-1"
+      aria-label={`${serviceName}: status strip, one segment per ${unit}, worst status in each`}
+      className={cn("flex h-5 items-stretch overflow-hidden rounded-md", gap)}
     >
-      <div
-        className="mb-1 grid gap-[2px]"
-        style={{ gridTemplateColumns: "44px repeat(24, minmax(9px, 1fr))" }}
-      >
-        <span aria-hidden />
-        {HOUR_TICKS.map((hour) => (
-          <span
-            key={hour}
-            aria-hidden
-            className="text-center font-mono text-[9px] text-muted-foreground"
-            style={{ gridColumn: hour + 2 }}
-          >
-            {String(hour).padStart(2, "0")}
-          </span>
-        ))}
-      </div>
-
-      <div className="space-y-[3px]">
-        {rows.map(([dayKey, dayCells]) => {
-          const hourCells = new Map(
-            dayCells.map((c) => [ktParts(new Date(c.timestamp)).hour, c])
-          );
-          return (
-            <div
-              key={dayKey}
-              className="grid gap-[2px]"
-              style={{ gridTemplateColumns: "44px repeat(24, minmax(9px, 1fr))" }}
-            >
-              <span className="self-center pr-1 text-right font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
-                {dayKey === today ? "Today" : weekdayDayLabel(dayKey)}
-              </span>
-              {Array.from({ length: 24 }, (_, hour) => {
-                const cell = hourCells.get(hour);
-                if (!cell) return null;
-                const meta = cell.status ? STATUS_META[cell.status] : null;
-                return (
-                  <div
-                    key={hour}
-                    title={`${ktStamp(cell.timestamp)} — ${
-                      meta
-                        ? meta.label +
-                          (cell.responseTime !== null
-                            ? ` (${formatLatency(cell.responseTime)})`
-                            : "")
-                        : "No data"
-                    }`}
-                    aria-hidden
-                    className={cn(
-                      "aspect-square w-full rounded-[3px]",
-                      statusClass(cell.status)
-                    )}
-                    style={{ gridColumn: hour + 2 }}
-                  />
-                );
-              })}
-            </div>
-          );
-        })}
-      </div>
+      {points.map((point) => (
+        <div
+          key={point.id}
+          title={point.title}
+          aria-hidden
+          className={cn("h-full min-w-0 flex-1", statusClass(point.status))}
+        />
+      ))}
     </div>
   );
 }
 
-function DayCalendar({
-  history,
-  days,
-  serviceName,
+function LatencyChart({
+  points,
+  unit,
 }: {
-  history: DailyHistory[];
-  days: number;
-  serviceName: string;
+  points: UnitPoint[];
+  unit: string;
 }) {
-  const { cells, minCol } = useMemo(() => {
-    const now = new Date();
-    const todayStart = Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate()
-    );
-    const byDay = new Map(history.map((d) => [d.day, d]));
-    const dates = Array.from(
-      { length: days },
-      (_, i) =>
-        new Date(todayStart - (days - 1 - i) * DAY_MS)
-          .toISOString()
-          .slice(0, 10)
-    );
-    const cells = dates.map((day) => ({
-      day,
-      position: dayPosition(day),
-      record: byDay.get(day) ?? null,
-    }));
-    const minCol = Math.min(...cells.map((c) => c.position.col));
-    return { cells, minCol };
-  }, [history, days]);
-
-  const weeks = useMemo(() => {
-    const maxCol = Math.max(...cells.map((c) => c.position.col));
-    return maxCol - minCol + 1;
-  }, [cells, minCol]);
-
-  const months = useMemo(() => {
-    const grouped = new Map<string, { start: number; end: number }>();
-    for (const { day, position } of cells) {
-      const month = day.slice(0, 7);
-      const entry = grouped.get(month);
-      if (entry) {
-        entry.start = Math.min(entry.start, position.col);
-        entry.end = Math.max(entry.end, position.col);
-      } else {
-        grouped.set(month, { start: position.col, end: position.col });
-      }
-    }
-    return [...grouped.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [cells]);
-
-  const WEEKS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const GUTTER_ROWS = [0, 2, 4];
-
+  const interval = Math.max(0, Math.floor(points.length / 7));
   return (
-    <div
-      role="img"
-      aria-label={`GitHub-style calendar for ${serviceName} over the last ${days} days, one square per day`}
-      className="overflow-x-auto pb-1"
-    >
-      <div
-        className="mb-1 grid gap-[3px]"
-        style={{ gridTemplateColumns: `44px repeat(${weeks}, 12px)` }}
-      >
-        <span aria-hidden />
-        {months.map(([month, range]) => (
-          <span
-            key={month}
-            aria-hidden
-            className="overflow-hidden font-mono text-[9px] leading-3 text-muted-foreground"
-            style={{
-              gridColumnStart: range.start - minCol + 2,
-              gridColumnEnd: range.end - minCol + 3,
-            }}
-          >
-            {new Date(`${month}-01T00:00:00Z`)
-              .toLocaleDateString("en-US", { timeZone: "UTC", month: "short" })}
-          </span>
-        ))}
-      </div>
-
-      <div className="space-y-[3px]">
-        {WEEKS.map((label, rowIndex) => (
-          <div
-            key={label}
-            className="grid gap-[3px]"
-            style={{ gridTemplateColumns: `44px repeat(${weeks}, 12px)` }}
-          >
-            <span
-              aria-hidden
-              className={cn(
-                "self-center pr-1 text-right font-mono text-[9px] uppercase tracking-wide",
-                GUTTER_ROWS.includes(rowIndex)
-                  ? "text-muted-foreground"
-                  : "text-transparent"
-              )}
-            >
-              {label}
-            </span>
-            {cells
-              .filter((cell) => cell.position.row === rowIndex)
-              .map(({ day, position, record }) => {
-                const meta = record ? STATUS_META[record.status] : null;
-                const col = position.col - minCol + 2;
-                return (
-                  <div
-                    key={day}
-                    title={
-                      record
-                        ? `${day} · ${Math.round(record.uptime * 100)}% up · ${
-                            meta?.label
-                          }${
-                            record.coverage < 1
-                              ? ` · ${Math.round(record.coverage * 24)}h recorded`
-                              : ""
-                          }`
-                        : `${day} — no data`
-                    }
-                    aria-hidden
-                    className={cn(
-                      "aspect-square w-[12px] rounded-[3px]",
-                      record ? statusClass(record.status) : "bg-muted"
-                    )}
-                    style={{ gridColumn: col }}
-                  />
-                );
-              })}
-          </div>
-        ))}
-      </div>
+    <div className="h-40 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart
+          data={points}
+          margin={{ top: 6, right: 4, left: 0, bottom: 0 }}
+        >
+          <defs>
+            <linearGradient id="historyLatencyFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#0070f3" stopOpacity={0.2} />
+              <stop offset="95%" stopColor="#0070f3" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="var(--border)"
+            vertical={false}
+          />
+          <XAxis
+            dataKey="time"
+            tick={AXIS_TICK}
+            tickLine={false}
+            axisLine={false}
+            interval={interval}
+            tickMargin={6}
+          />
+          <YAxis
+            tick={AXIS_TICK}
+            tickLine={false}
+            axisLine={false}
+            width={44}
+            unit=" ms"
+          />
+          <Tooltip
+            contentStyle={TOOLTIP_STYLE}
+            labelStyle={{ color: "var(--muted-foreground)" }}
+            formatter={(value) => [
+              `${value} ms`,
+              `Avg response · per ${unit}`,
+            ]}
+          />
+          <Area
+            type="monotone"
+            dataKey="ms"
+            stroke="#0070f3"
+            strokeWidth={2}
+            fill="url(#historyLatencyFill)"
+            dot={false}
+            activeDot={{ r: 3 }}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
     </div>
   );
 }
@@ -363,12 +263,56 @@ function RangeSwitch({
   );
 }
 
+function LegendNote({ unit }: { unit: string }) {
+  const items = [
+    { status: "operational" as const, label: "Operational" },
+    { status: "degraded" as const, label: "Degraded" },
+    { status: "down" as const, label: "Down" },
+  ];
+  return (
+    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+      <span>
+        Worst status per {unit}:
+      </span>
+      {items.map(({ status, label }) => (
+        <span key={status} className="inline-flex items-center gap-1.5">
+          <span
+            className={cn("size-1.5 rounded-full", STATUS_META[status].dot)}
+            aria-hidden
+          />
+          {label}
+        </span>
+      ))}
+      <span className="inline-flex items-center gap-1.5">
+        <span className="size-1.5 rounded-full bg-muted" aria-hidden />
+        No data
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-0.5 w-4 rounded-full bg-[#0070f3]" aria-hidden />
+        Avg response time
+      </span>
+    </p>
+  );
+}
+
+const emptySubscribe = () => () => {};
+
+/** True once rendered in the browser (false during SSR/hydration). */
+function useIsClient(): boolean {
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+}
+
 export function ServiceHistoryRange({
   serviceId,
   serviceName,
   initialSlots,
 }: ServiceHistoryRangeProps) {
   const [rangeKey, setRangeKey] = useState<RangeKey>("24h");
+  const isClient = useIsClient();
   const range = RANGES.find((r) => r.key === rangeKey) ?? RANGES[0];
 
   const dayDays = range.hourly ? null : range.days;
@@ -379,20 +323,64 @@ export function ServiceHistoryRange({
     hourDays ?? 7
   );
 
-  const cells = useMemo(() => {
+  const hourCells = useMemo<UptimeSlot[]>(() => {
     if (!range.hourly) return [];
     if (range.days === 1) return initialSlots;
     return hourly.data ? expandHourWindow(hourly.data, range.days) : [];
   }, [range, initialSlots, hourly.data]);
 
+  const points = useMemo<UnitPoint[]>(() => {
+    if (range.hourly) {
+      return hourCells.map((cell) => {
+        const meta = cell.status ? STATUS_META[cell.status] : null;
+        const title = `${ktStamp(cell.timestamp)} — ${
+          meta
+            ? meta.label +
+              (cell.responseTime !== null
+                ? ` (${formatLatency(cell.responseTime)})`
+                : "")
+            : "No data"
+        }`;
+        return {
+          id: cell.timestamp,
+          status: cell.status,
+          title,
+          time: ktTime(cell.timestamp),
+          ms: cell.responseTime,
+        };
+      });
+    }
+
+    const byDay = new Map((daily.data ?? []).map((d) => [d.day, d]));
+    return utcDayAxis(range.days).map((day) => {
+      const record = byDay.get(day) ?? null;
+      const title = record
+        ? `${utcDateLong(day)} · ${Math.round(record.uptime * 100)}% up · ${
+            STATUS_META[record.status].label
+          }${
+            record.coverage < 1
+              ? ` · ${Math.round(record.coverage * 24)}h recorded`
+              : ""
+          }`
+        : `${day} — no data`;
+      return {
+        id: day,
+        status: record?.status ?? null,
+        title,
+        time: utcDateLabel(day),
+        ms: record?.averageResponseTime ?? null,
+      };
+    });
+  }, [range, hourCells, daily.data]);
+
   const summary = useMemo(() => {
     if (range.hourly) {
-      const recorded = cells.filter((c) => c.status !== null);
+      const recorded = points.filter((p) => p.status !== null);
       const operational = recorded.filter(
-        (c) => c.status === "operational"
+        (p) => p.status === "operational"
       ).length;
-      const down = recorded.filter((c) => c.status === "down").length;
-      const degraded = recorded.filter((c) => c.status === "degraded").length;
+      const down = recorded.filter((p) => p.status === "down").length;
+      const degraded = recorded.filter((p) => p.status === "degraded").length;
       const uptime =
         recorded.length > 0 ? (operational / recorded.length) * 100 : null;
       const parts: string[] = [
@@ -415,12 +403,15 @@ export function ServiceHistoryRange({
     if (degradedDays > 0) parts.push(`${degradedDays}d degraded`);
     if (downDays > 0) parts.push(`${downDays}d down`);
     return parts.join(" · ");
-  }, [range, cells, daily.data]);
+  }, [range, points, daily.data]);
 
   const loading =
     range.hourly
       ? range.days > 1 && !hourly.data && hourly.isPending
       : !daily.data && daily.isPending;
+
+  const hasLatency = points.some((p) => p.ms !== null);
+  const unit = range.hourly ? "hour" : "day";
 
   return (
     <div className="mt-5 space-y-3">
@@ -433,23 +424,23 @@ export function ServiceHistoryRange({
         <p className="py-1.5 text-xs text-muted-foreground">
           Loading {range.label.toLowerCase()} history…
         </p>
-      ) : range.hourly ? (
-        cells.length > 0 ? (
-          <HourGrid cells={cells} serviceName={serviceName} />
-        ) : null
-      ) : (
-        <DayCalendar
-          history={daily.data ?? []}
-          days={range.days}
-          serviceName={serviceName}
-        />
-      )}
-
-      <p className="text-xs text-muted-foreground">
-        {range.hourly
-          ? `Square heatmap · rows are days, columns are the 24 hours (shown in Asia/Kathmandu time) · worst status per hour · grey = no data.`
-          : `GitHub-style calendar · each square is one day coloured by its worst status · rows are Mon–Sun · grey = no recorded data.`}
-      </p>
+      ) : points.length > 0 ? (
+        <div className="space-y-1.5">
+          {hasLatency ? (
+            isClient ? (
+              <LatencyChart points={points} unit={unit} />
+            ) : (
+              <div aria-hidden className="h-40" />
+            )
+          ) : (
+            <p className="pt-1 text-xs text-muted-foreground">
+              No response-time data recorded for this period yet.
+            </p>
+          )}
+          <StatusBand points={points} unit={unit} serviceName={serviceName} />
+          <LegendNote unit={unit} />
+        </div>
+      ) : null}
     </div>
   );
 }
