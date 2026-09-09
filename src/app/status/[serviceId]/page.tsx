@@ -6,6 +6,7 @@ import { decodeHistory } from "@/lib/utils";
 import seedData from "@/data/seed-services.json";
 import { seedServiceSchema } from "@/features/services-monitor/types";
 import { getServicesHealth } from "@/features/services-monitor/server/health-probe";
+import { ServiceHistoryRange } from "@/features/services-monitor/components/ServiceHistoryRange";
 import {
   buildServiceJsonLd,
   buildServiceMetadata,
@@ -85,12 +86,6 @@ export default async function ServiceStatusPage({ params }: Props) {
           </div>
           <dl className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
             <div className="flex items-baseline gap-1.5">
-              <dt className="text-xs uppercase tracking-wide">24h uptime</dt>
-              <dd className="font-semibold text-foreground">
-                {service.uptimePercentage.toFixed(1)}%
-              </dd>
-            </div>
-            <div className="flex items-baseline gap-1.5">
               <dt className="text-xs uppercase tracking-wide">Latency</dt>
               <dd className="font-semibold text-foreground">
                 {service.responseTime === null
@@ -109,23 +104,11 @@ export default async function ServiceStatusPage({ params }: Props) {
           </dl>
         </div>
 
-        <div className="mt-5 flex gap-0.5 items-end" aria-hidden>
-          {slots.map((slot, i) => (
-            <div
-              key={i}
-              className={`flex-1 rounded-[2px] ${
-                !slot.status
-                  ? "bg-muted"
-                  : slot.status === "operational"
-                    ? "bg-emerald-500"
-                    : slot.status === "degraded"
-                      ? "bg-amber-500"
-                      : "bg-rose-500"
-              } ${slot.status === "down" ? "h-7" : slot.status === "degraded" ? "h-5" : "h-3"}`}
-              title={slot.status ?? "no data"}
-            />
-          ))}
-        </div>
+        <ServiceHistoryRange
+          serviceId={service.id}
+          serviceName={service.name}
+          initialSlots={slots}
+        />
 
         <p className="mt-3 text-xs text-muted-foreground">
           Last checked{" "}
@@ -133,7 +116,7 @@ export default async function ServiceStatusPage({ params }: Props) {
             dateStyle: "medium",
             timeStyle: "short",
           })}
-          . 24-hour history, worst status per hour. Grey slots = no data yet.
+          . Measured from a Nepal vantage point every 5 minutes.
         </p>
       </section>
 

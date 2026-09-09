@@ -19,6 +19,17 @@ export const dailyHistorySchema = z.object({
 });
 export type DailyHistory = z.infer<typeof dailyHistorySchema>;
 
+/** One persisted hourly bucket for a service, as exposed by the API. */
+export const hourlyBucketSchema = z.object({
+  /** ISO timestamp for the start of the hour this bucket covers. */
+  bucket: z.string(),
+  status: z.enum(["operational", "degraded", "down"]),
+  /** Mean response time (ms) of the samples in that hour; null when none. */
+  averageResponseTime: z.number().nullable(),
+  sampleCount: z.number().int().nonnegative(),
+});
+export type HourlyBucket = z.infer<typeof hourlyBucketSchema>;
+
 interface BucketRow {
   bucket_ms: number;
   worst_status: "operational" | "degraded" | "down";
@@ -27,6 +38,39 @@ interface BucketRow {
 }
 
 const seedById = new Map(seedData.map((seed) => [seed.id, seed]));
+
+/** Loads raw hourly bucket rows for a service since `sinceMs` ([] on failure). */
+async function readBuckets(
+  serviceId: string,
+  sinceMs: number
+): Promise<BucketRow[]> {
+  if (!d1Config) return [];
+  const seed = seedById.get(serviceId);
+  if (!seed) return [];
+
+  try {
+    return await d1Query<BucketRow>(
+      `SELECT bucket_ms, worst_status, sample_count, sum_response_ms
+       FROM status_checks
+       WHERE service_id = ? AND bucket_ms >= ?
+       ORDER BY bucket_ms`,
+      [serviceId, sinceMs]
+    );
+  } catch (err) {
+    console.error("[govstatus] history read failed:", err);
+    return [];
+  }
+}
+
+function bucketToHourly(row: BucketRow): HourlyBucket {
+  return {
+    bucket: new Date(row.bucket_ms).toISOString(),
+    status: row.worst_status,
+    sampleCount: row.sample_count,
+    averageResponseTime:
+      row.sample_count > 0 ? Math.round(row.sum_response_ms / row.sample_count) : null,
+  };
+}
 
 /**
  * Daily uptime history for one service over `days` (up to 90). Each bucket row
@@ -38,24 +82,7 @@ export async function getDailyHistory(
   serviceId: string,
   days: number
 ): Promise<DailyHistory[]> {
-  if (!d1Config) return [];
-  const seed = seedById.get(serviceId);
-  if (!seed) return [];
-
-  const sinceMs = Date.now() - days * DAY_MS;
-  let rows: BucketRow[];
-  try {
-    rows = await d1Query<BucketRow>(
-      `SELECT bucket_ms, worst_status, sample_count, sum_response_ms
-       FROM status_checks
-       WHERE service_id = ? AND bucket_ms >= ?
-       ORDER BY bucket_ms`,
-      [serviceId, sinceMs]
-    );
-  } catch (err) {
-    console.error("[govstatus] history read failed:", err);
-    return [];
-  }
+  const rows = await readBuckets(serviceId, Date.now() - days * DAY_MS);
 
   // Group hourly buckets into UTC days.
   const byDay = new Map<string, BucketRow[]>();
@@ -93,9 +120,23 @@ export async function getDailyHistory(
   return history.sort((a, b) => a.day.localeCompare(b.day));
 }
 
+/**
+ * Raw hourly history for one service over `days` (up to 90), ascending by
+ * bucket. Sparse: hours with no recorded samples are absent so callers render
+ * the gaps themselves.
+ */
+export async function getHourlyHistory(
+  serviceId: string,
+  days: number
+): Promise<HourlyBucket[]> {
+  const rows = await readBuckets(serviceId, Date.now() - days * DAY_MS);
+  return rows.map(bucketToHourly);
+}
+
 export const historyQuerySchema = z.object({
   service: z.string().min(1),
   days: z.coerce.number().int().min(1).max(90).default(30),
+  granularity: z.enum(["hour", "day"]).default("day"),
 });
 
 export { seedById };
