@@ -1,6 +1,7 @@
 import { getServicesHealth } from "@/features/services-monitor/server/health-probe";
 import { STATUS_META } from "@/features/services-monitor/components/status-meta";
 import { decodeHistory } from "@/lib/utils";
+import { SITE_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 60;
@@ -92,7 +93,7 @@ export default async function EmbedPage({
         Last checked {new Date(service.checkedAt).toLocaleString()}
       </div>
       <a
-        href="https://govstatusnepal.techyatraa.com"
+        href={SITE_URL}
         style={{ display: "block", marginTop: 8, fontSize: 11, color: "#0070f3", textDecoration: "none" }}
       >
         GovStatus Nepal

@@ -16,6 +16,7 @@ import { STATUS_META } from "@/features/services-monitor/components/status-meta"
 import { useDetailStore } from "@/features/services-monitor/store/useDetailStore";
 import { useServicesHealth } from "@/features/services-monitor/api/useServicesHealth";
 import { useServiceHistory } from "@/features/services-monitor/api/useServiceHistory";
+import { SITE_URL } from "@/lib/site";
 import {
   certDaysLeft,
   cn,
@@ -304,6 +305,15 @@ export function ServiceDetailDialog() {
               </a>
             </Button>
 
+            <Button size="sm" variant="outline" asChild>
+              <a
+                href={`/status/${service.id}`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                Status page
+              </a>
+            </Button>
+
             <EmbedSnippet serviceId={service.id} name={service.name} />
           </div>
         )}
@@ -376,7 +386,7 @@ function SubscribeForm({
 
 function EmbedSnippet({ serviceId, name }: { serviceId: string; name: string }) {
   const [copied, setCopied] = useState(false);
-  const snippet = `<iframe src="https://govstatusnepal.techyatraa.com/embed/${serviceId}" width="380" height="160" style="border:0;border-radius:12px" loading="lazy" title="${name} status"></iframe>`;
+  const snippet = `<iframe src="${SITE_URL}/embed/${serviceId}" width="380" height="160" style="border:0;border-radius:12px" loading="lazy" title="${name} status"></iframe>`;
 
   return (
     <div className="space-y-1.5">

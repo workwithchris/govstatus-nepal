@@ -65,6 +65,12 @@ backed by a persisted status history in Cloudflare D1.
 - **Dashboard** — metric cards, instant search, category tabs with counts,
   sort by status/name/latency, card grid + sortable table view, dark/light
   mode
+- **SEO & AI crawlability** — every monitored service has a dedicated
+  server-rendered status page (`/status/<id>`, "Is … down?" metadata,
+  `GovernmentService` JSON-LD, per-service OG image), a 171-URL sitemap, an
+  `llms.txt` manifest for AI engines (ChatGPT/Perplexity/Gemini), keyword-rich
+  homepage content, and incident RSS items linking to the affected service's
+  status page
 - **Caching** — ISR (`revalidate = 60`) plus `s-maxage=60,
   stale-while-revalidate=30`; the Worker is serve-only and never probes
 - **Honest fallback** — when D1 is unconfigured/unreachable the API reports

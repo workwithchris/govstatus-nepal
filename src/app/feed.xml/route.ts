@@ -1,8 +1,7 @@
 import { getIncidents } from "@/features/services-monitor/server/incidents";
+import { SITE_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
-
-const SITE_URL = "https://govstatusnepal.techyatraa.com";
 
 function escapeXml(input: string): string {
   return input
@@ -28,7 +27,7 @@ export async function GET() {
       const status = incident.ongoing ? "ongoing" : "resolved";
       return `    <item>
       <title>${escapeXml(title)}</title>
-      <link>${SITE_URL}</link>
+<link>${SITE_URL}/status/${incident.serviceId}</link>
       <guid isPermaLink="false">${escapeXml(incident.id)}</guid>
       <pubDate>${pubDate}</pubDate>
       <description>${escapeXml(

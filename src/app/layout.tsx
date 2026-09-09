@@ -5,10 +5,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Footer } from "@/components/common/footer";
 import { Navbar } from "@/components/common/navbar";
 import { Providers } from "@/app/providers";
+import { SITE_URL } from "@/lib/site";
 
 import "./globals.css";
-
-const SITE_URL = "https://govstatusnepal.techyatraa.com";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
