@@ -1,6 +1,7 @@
 import { getServicesHealth } from "@/features/services-monitor/server/health-probe";
 
-// Re-probe at most once per minute (ISR + CDN cache header below).
+// Serve the persisted snapshot with a short cache TTL. The Worker is
+// serve-only (never probes); data freshness follows the probe cadence.
 export const dynamic = "force-dynamic";
 export const revalidate = 60;
 

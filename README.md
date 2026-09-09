@@ -3,7 +3,7 @@
 Real-time uptime monitor, health checker, and reliability tracker for Nepal's
 government portals and digital public services.
 
-Live probe results are embedded server-side, refreshed every minute, and
+Live probe results are embedded server-side, refreshed every 5 minutes, and
 backed by a persisted status history in Cloudflare D1.
 
 ![Tech](https://img.shields.io/badge/Next.js%2016-App%20Router-black)
@@ -152,10 +152,12 @@ CLOUDFLARE_API_TOKEN=...
 
 Each probe cycle then reads the last 24h of real history, upserts the current
 hour's aggregate bucket, refreshes per-service state, and prunes rows older
-than **90 days** (was 7 — run the migration below once). Live status is
-published every minute from the probe; D1 history is persisted every
-**5 minutes** (not every cycle) to stay inside D1's
-free-tier daily row-write limit — ~53k writes/day vs 100k.
+than **90 days** (was 7 — run the migration below once). The Nepal-vantage
+probe runs every **5 minutes** (cron), probing all services and writing that
+cycle's buckets each run — ~53k D1 writes/day, well inside the free-tier
+100k/day limit. Probing is decoupled from website traffic: the cron machine
+keeps writing history whether or not anyone visits; the serve-only Worker
+only reads D1 on request and never probes.
 
 > Existing database from a previous schema? Rebuild it once:
 >

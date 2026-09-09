@@ -21,7 +21,7 @@ export default function DashboardPage() {
         </h1>
         <p className="text-base text-muted-foreground">
           Live uptime and health checks for Nepal&apos;s essential citizen,
-          finance, and ministry portals — refreshed every minute.
+          finance, and ministry portals — refreshed every 5 minutes.
         </p>
         <ProvenanceBanner />
       </header>

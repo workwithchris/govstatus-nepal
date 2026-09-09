@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     siteName: "GovStatus Nepal",
     title: "GovStatus Nepal — Is the government online?",
     description:
-      "Live uptime and health checks for Nepal's essential citizen, finance, and ministry portals — refreshed every minute.",
+      "Live uptime and health checks for Nepal's essential citizen, finance, and ministry portals — refreshed every 5 minutes.",
     locale: "en_NP",
     images: [
       {

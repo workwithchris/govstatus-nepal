@@ -26,8 +26,8 @@ const HISTORY_SLOTS = 24;
 const HOUR_MS = 60 * 60 * 1000;
 const RETENTION_DAYS = 90;
 /**
- * How often D1 is written. Probes still run every minute (live status is
- * served from the module cache), but persisting history every minute would
+ * How often D1 is written. Probes still run every cycle (live status is
+ * served from the module cache), but persisting history every cycle would
  * blow past D1's free-tier write limit (~266k rows/day vs 100k). Batching to
  * every 5 minutes lands at ~53k writes/day. History reads are gated the same
  * way, cutting D1 reads ~5x too.
@@ -181,7 +181,7 @@ function nativeProbeFallback(urlString: string): Promise<number | null> {
 
 /**
  * Release the response socket: undici keeps the connection in-flight until
- * the body is drained/cancelled. Probing 92 services every minute would
+ * the body is drained/cancelled. Probing 145 services every cycle would
  * otherwise leak sockets and defeat keep-alive reuse. We only need the
  * status line, so cancel the body immediately.
  */

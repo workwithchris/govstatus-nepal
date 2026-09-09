@@ -1,4 +1,4 @@
-import { d1Config } from "@/lib/d1";
+import { d1Config, d1Query } from "@/lib/d1";
 import { getServicesHealth } from "@/features/services-monitor/server/health-probe";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +12,21 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   const payload = await getServicesHealth();
+
+  // True data freshness: the newest *actual* write, not the synthetic
+  // response checkedAt. Zero buckets = no history yet (probe never ran).
+  let lastWriteMs: number | null = null;
+  let bucketCount = 0;
+  try {
+    const rows = await d1Query<{ m: number | null; c: number }>(
+      `SELECT MAX(last_checked_at_ms) AS m, COUNT(*) AS c FROM service_meta`
+    );
+    lastWriteMs = rows[0]?.m ?? null;
+    bucketCount = rows[0]?.c ?? 0;
+  } catch {
+    /* D1 unreadable */
+  }
+
   return Response.json(
     {
       d1Configured: !!d1Config,
@@ -19,9 +34,11 @@ export async function GET() {
       databaseId: d1Config?.databaseId ?? null,
       source: payload.source,
       servedCheckedAt: payload.checkedAt,
-      servedMinutesOld: Math.round(
-        (Date.now() - Date.parse(payload.checkedAt)) / 60000
-      ),
+      lastWriteAt: lastWriteMs ? new Date(lastWriteMs).toISOString() : null,
+      servedMinutesOld: lastWriteMs
+        ? Math.round((Date.now() - lastWriteMs) / 60000)
+        : null,
+      metaRows: bucketCount,
       summary: payload.summary,
     },
     { headers: { "Cache-Control": "no-store" } }
