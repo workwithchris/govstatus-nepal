@@ -1,4 +1,5 @@
 import { HomeTabs } from "@/features/services-monitor";
+import { ProvenanceBanner } from "@/features/services-monitor/components/ProvenanceBanner";
 
 // Fully static: the shell is served instantly from the CDN edge cache and
 // all live data is fetched client-side by React Query (which re-renders on
@@ -22,6 +23,7 @@ export default function DashboardPage() {
           Live uptime and health checks for Nepal&apos;s essential citizen,
           finance, and ministry portals — refreshed every minute.
         </p>
+        <ProvenanceBanner />
       </header>
 
       <HomeTabs />

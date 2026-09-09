@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { STATUS_META } from "@/features/services-monitor/components/status-meta";
 import { useServicesHealth } from "@/features/services-monitor/api/useServicesHealth";
+import { useLang } from "@/lib/i18n";
 import { cn, formatLatency, formatTimeAgo } from "@/lib/utils";
 
 function OverviewSkeleton() {
@@ -24,6 +25,7 @@ function OverviewSkeleton() {
 
 export function MetricsOverview() {
   const { data, isLoading } = useServicesHealth();
+  const { t } = useLang();
 
   if (isLoading || !data) {
     return <OverviewSkeleton />;
@@ -32,10 +34,8 @@ export function MetricsOverview() {
   const { summary, checkedAt } = data;
   const isNormal = summary.overallStatus === "normal";
   const statusLabel = isNormal
-    ? "All Systems Normal"
-    : `${summary.down + summary.degraded} Service${
-        summary.down + summary.degraded === 1 ? "" : "s"
-      } Experiencing Issues`;
+    ? t("status.normal")
+    : `${summary.down + summary.degraded} ${t("status.issues")}`;
 
   return (
     <section id="metrics" className="space-y-3">
@@ -43,20 +43,20 @@ export function MetricsOverview() {
         <Card className="p-6">
           <p className="flex items-center gap-1.5 font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
             <Server className="size-3.5" aria-hidden />
-            Total Monitored
+            {t("metric.total")}
           </p>
           <p className="mt-2 text-[32px] font-semibold leading-10 tracking-[-0.04em] text-foreground">
             {summary.total}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Government portals &amp; public services
+            {t("metric.portals")}
           </p>
         </Card>
 
         <Card className="p-6">
           <p className="flex items-center gap-1.5 font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
             <Activity className="size-3.5" aria-hidden />
-            System Status
+            {t("metric.systemStatus")}
           </p>
           <p
             className={cn(
@@ -90,7 +90,7 @@ export function MetricsOverview() {
         <Card className="p-6">
           <p className="flex items-center gap-1.5 font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
             <Clock3 className="size-3.5" aria-hidden />
-            Avg Response Time
+            {t("metric.avgResponse")}
           </p>
           <p className="mt-2 font-mono text-[32px] font-semibold leading-10 tracking-[-0.04em] text-foreground">
             {formatLatency(summary.averageResponseTime)}

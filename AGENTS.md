@@ -31,7 +31,8 @@ Uptime monitor for Nepal's government portals. Next.js 16 (App Router, Turbopack
 ## D1, history, and write limits
 
 - D1 persistence is gated to every **5 minutes** (`PERSIST_INTERVAL_MINUTES`, min 1) even though probes run per cycle, to stay inside the free-tier 100k writes/day. Preserve this gating if you touch `persistChecks`/`runChecks`; history reads reuse a cached index between persist cycles.
-- History is **hourly buckets** with worst-status-in-hour aggregation: a bucket counts as `down` if any sample that hour was down (`d1/schema.sql`, `persistChecks`). A 1-minute blip must not be hidden.
+- History is **hourly buckets** with worst-status-in-hour aggregation: a bucket counts as `down` if any sample that hour was down (`d1/schema.sql`, `persistChecks`). A 1-minute blip must not be hidden. Retention is **90 days** (`RETENTION_DAYS` in `health-probe.ts` and `nepal-probe.mjs`); the long-term history endpoint (`/api/health/history`, `server/history.ts`) rolls daily aggregates up from those buckets.
+- `probeService` (**both** `health-probe.ts` and `nepal-probe.mjs`) now **confirms "down" with a second probe** after a 2.5s delay and supports a per-service `checkUrl` deep check (worse result wins). Keep both behaviors if you touch the probe; they exist to cut false "down" on flaky .np infra.
 - Writes are batched in chunks of 60 via `d1BatchChunked` (`health-probe.ts:325`) — the D1 REST statement cap. Keep chunking for any large batch.
 - D1 is reached through `src/lib/d1.ts` (plain REST, no native binding). Missing/invalid env → `d1Config` is null → the app serves `source: "simulated"` history; an *empty configured* DB yields grey "no data" slots, never fabricated bars.
 - Env: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_D1_DATABASE_ID`, `CLOUDFLARE_API_TOKEN` (token needs "D1: Edit"); copy `.env.example` → `.env.local`.

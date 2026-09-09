@@ -12,7 +12,7 @@ backed by a persisted status history in Cloudflare D1.
 
 ## What it does
 
-- **Parallel health probes** — 92 government services (passports, tax, land
+- **Parallel health probes** — 145 government services (passports, tax, land
   records, ministries, palikas…) checked concurrently every 5 minutes with an
   8s→45s `AbortController` timeout (configurable via `PROBE_TIMEOUT_MS`)
   and a browser-like user agent, **from a
@@ -20,34 +20,59 @@ backed by a persisted status history in Cloudflare D1.
   TLS-strict-rejected by many .np portals, which made foreign-vantage
   "down" readings unreliable; a self-describing bot UA likewise gets
   reset/stalled by .np WAFs, so the probe presents as a normal browser)
+- **Down confirmation** — a "down" reading is re-probed once after a short
+  delay; only a second failure flips the service red, cutting single-fetch
+  false alarms on flaky .np infrastructure
+- **Deep checks** — services may declare an optional `checkUrl` (a key API or
+  flow endpoint). When set, the probe hits it in addition to the homepage and
+  reports the worse of the two, so "portal up but the login/API broken" isn't
+  missed
 - **Status derivation** — `operational` (200–399 under 3.5s), `degraded`
   (slow or 403/WAF), `down` (5xx, refused, timeout)
 - **TLS-relaxed retry** — Node/undici rejects incomplete certificate chains
   that browsers tolerate; probes retry once with relaxed TLS so certificate
   quirks don't read as outages
 - **24-hour uptime bars** — hourly history per service, aggregated per hour
-  from every probe sample and persisted to Cloudflare D1 (7-day retention).
+  from every probe sample and persisted to Cloudflare D1 (**90-day retention**).
   An hour counts as `down` if any sample in that hour was down, so a
   one-minute blip isn't hidden by a good final check
+- **Long-term uptime** — 30/90-day per-service uptime % and daily bars via
+  `/api/health/history?service=<id>&days=30` (rolled up from the hourly
+  buckets); surfaced in the service detail dialog
 - **TLS cert tracking** — cert expiry is captured via a lightweight TLS
   handshake (re-checked every 6h, Node only) and surfaced per service
 - **Status-change alerts** — when a service transitions to/from down or
   degraded, a JSON webhook (`ALERT_WEBHOOK_URL`) fires with the transition
   details
+- **Public subscribe (disabled by default)** — per-service email status-change
+  notifications. Plumbing is in place (D1 `subscribers` table, `/api/subscribe`,
+  probe-side delivery) but gated behind `ENABLE_NOTIFICATIONS=true` plus
+  `EMAIL_SENDING_ACCOUNT_ID` / `EMAIL_SENDING_API_TOKEN` / `NOTIFY_FROM`
+  (domain onboarded to Cloudflare Email Sending). Until then the subscribe UI
+  is hidden and the API refuses writes.
+- **Incident log** — `/api/incidents` (JSON), `/feed.xml` (RSS 2.0), and an
+  Incidents tab: contiguous non-operational runs per service over the last
+  7 days, ongoing vs resolved
+- **Provenance + freshness banner** — the dashboard always says how the data
+  was gathered (Nepal vantage) and how stale it is; a stale snapshot or
+  simulated fallback is flagged, never presented as live
+- **Embed widget** — `/embed/<serviceId>` renders a server-side, no-JS status
+  widget (copy the iframe snippet from the service dialog)
+- **Nepali UI toggle** — English/नेपाली language switch for the main chrome
 - **Live probe loader** — a full-page loader with real progress
   (checked/total, down/degraded counts, recent completions) streamed from a
   progress endpoint
 - **Dashboard** — metric cards, instant search, category tabs with counts,
   sort by status/name/latency, card grid + sortable table view, dark/light
   mode
-- **Incident feed** — `/api/incidents` (JSON) and `/feed.xml` (RSS 2.0)
-  derived from the persisted hourly history: contiguous non-operational runs
-  per service over the last 7 days
 - **Caching** — ISR (`revalidate = 60`) plus `s-maxage=60,
   stale-while-revalidate=30`; the Worker is serve-only and never probes
 - **Honest fallback** — when D1 is unconfigured/unreachable the API reports
   `source: "simulated"` and the dashboard shows a banner, so fabricated
   history is never mistaken for real uptime
+- **Ops diagnostics** — `/api/diag` reports whether D1 is configured (with
+  account/database ids), the served source, and snapshot freshness, so a
+  stale database id is visible instead of silently producing wrong status
 
 ## Monitored services
 
@@ -56,7 +81,8 @@ finance (tax, NEPSE, NRB, EPF, SSF, customs), business (OCR, e-GP), core
 (national portal, election commission, NPC, CIAA), ministries, and
 metropolitan cities. The catalog lives in
 [`src/data/seed-services.json`](src/data/seed-services.json) — add an entry
-and the tabs, counts, and probes pick it up automatically.
+and the tabs, counts, and probes pick it up automatically. Add an optional
+`"checkUrl"` to any entry to also probe a key API/flow endpoint.
 
 ## Tech stack
 
@@ -126,14 +152,16 @@ CLOUDFLARE_API_TOKEN=...
 
 Each probe cycle then reads the last 24h of real history, upserts the current
 hour's aggregate bucket, refreshes per-service state, and prunes rows older
-than 7 days. Live status is published every minute from the probe; D1 history
-is persisted every **5 minutes** (not every cycle) to stay inside D1's
+than **90 days** (was 7 — run the migration below once). Live status is
+published every minute from the probe; D1 history is persisted every
+**5 minutes** (not every cycle) to stay inside D1's
 free-tier daily row-write limit — ~53k writes/day vs 100k.
 
-> Existing database from the previous (per-minute) schema? Rebuild it once:
+> Existing database from a previous schema? Rebuild it once:
 >
 > ```bash
 > npx wrangler d1 execute govstatus-history --remote --file d1/migrations/001_hourly-bucket-aggregation.sql
+> npx wrangler d1 execute govstatus-history --remote --file d1/migrations/002_subscribers.sql
 > ```
 
 ### Optional: status-change alerts
@@ -217,7 +245,29 @@ node probe/nepal-probe.mjs
 
 Writes ~53k D1 rows/day at 5-min cadence (well inside the 100k free limit).
 Set `ALERT_WEBHOOK_URL` in the environment to keep status-change alerts
-working from the Nepal probe.
+working from the Nepal probe. Optional env:
+
+- `VANTAGE_NAME` — a label for this probe machine, included in probe logs.
+  Running the script from **multiple machines** (e.g. two ISPs) writes
+  multiple samples per hour bucket; the D1 aggregation already handles this
+  (worst-status + average latency), giving you multi-vantage coverage without
+  code changes.
+- `EMAIL_SENDING_ACCOUNT_ID` / `EMAIL_SENDING_API_TOKEN` / `NOTIFY_FROM` —
+  enables emailing public subscribers on status transitions. `NOTIFY_FROM`
+  must be a domain onboarded to Cloudflare Email Sending.
+
+**Verify served data matches reality** (the #1 thing to check after any DB or
+secret change): hit the live API and compare with a fresh `--dry-run`:
+
+```bash
+curl -s https://<your-domain>/api/diag          # source, staleness, summary
+node probe/nepal-probe.mjs --dry-run            # ground truth from Nepal
+```
+
+If `/api/diag` shows dozens of `down` while the dry-run shows a handful, the
+Worker's `CLOUDFLARE_D1_DATABASE_ID` doesn't match the DB the probe writes —
+the serve-only worker then silently falls back and fabricates mass "down".
+Check the Worker secrets and `/api/diag`'s `databaseId` field.
 
 ## Notes
 

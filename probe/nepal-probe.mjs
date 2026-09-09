@@ -30,7 +30,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
 
 const HOUR_MS = 60 * 60 * 1000;
-const RETENTION_DAYS = 7;
+const RETENTION_DAYS = 90;
 // Long timeout: several .np municipal portals take 20-40s to respond (bharatpur
 // ~19s, biratnagar ~28s, pokhara ~38s). An 8s abort marked them "down" even
 // though they work. Overridable via PROBE_TIMEOUT_MS.
@@ -172,7 +172,7 @@ function nativeProbeFallback(urlString) {
   });
 }
 
-async function probeService(url) {
+async function probeOnce(url) {
   const startedAt = Date.now();
 
   const makeRequest = (dispatcher) => {
@@ -228,6 +228,33 @@ async function probeService(url) {
   } catch {
     return { status: "down", responseTime: null, httpStatus: null };
   }
+}
+
+const CONFIRM_DELAY_MS = 2500;
+const WORSE = { down: 2, degraded: 1, operational: 0 };
+
+function worse(a, b) {
+  if (WORSE[b.status] > WORSE[a.status]) return b;
+  if (WORSE[b.status] === WORSE[a.status]) return a.httpStatus != null ? a : b;
+  return a;
+}
+
+/**
+ * Probes homepage + optional deep checkUrl (worse wins), and confirms a "down"
+ * reading with a second probe after a short delay before reporting it down —
+ * cuts single-fetch false alarms on flaky .np infra.
+ */
+async function probeService(url, checkUrl) {
+  let result = await probeOnce(url);
+  if (checkUrl && checkUrl !== url) {
+    result = worse(result, await probeOnce(checkUrl));
+  }
+  if (result.status === "down") {
+    await new Promise((resolve) => setTimeout(resolve, CONFIRM_DELAY_MS));
+    const confirm = await probeOnce(url);
+    if (confirm.status !== "down") result = confirm;
+  }
+  return result;
 }
 
 async function probeCertExpiryMs(urlString) {
@@ -310,7 +337,7 @@ async function main() {
   const prevMeta = new Map(metaRows.map((r) => [r.service_id, r]));
 
   const results = await mapLimit(seeds, 15, async (seed) => {
-    const probe = await probeService(seed.url);
+    const probe = await probeService(seed.url, seed.checkUrl);
     return { seed, probe };
   });
 
@@ -379,10 +406,81 @@ async function main() {
     }
   }
 
+  // Public subscribers → email via Cloudflare Email Sending REST (config-gated).
+  // Requires EMAIL_SENDING_ACCOUNT_ID, EMAIL_SENDING_API_TOKEN, NOTIFY_FROM set.
+  const emailSent = await notifySubscribers(events);
+
   const count = (s) => results.filter((r) => r.probe.status === s).length;
   console.log(
-    `[nepal-probe] ${checkedAt} · persisted bucket=${bucketMs} operational=${count("operational")} degraded=${count("degraded")} down=${count("down")} certs=${certs.size} alerts=${events.length}`
+    `[nepal-probe] ${checkedAt} · vantage=${env.VANTAGE_NAME ?? "default"} bucket=${bucketMs} operational=${count("operational")} degraded=${count("degraded")} down=${count("down")} certs=${certs.size} alerts=${events.length} emails=${emailSent}`
   );
+}
+
+/**
+ * Email public subscribers on status transitions via Cloudflare Email Sending
+ * REST. Config-gated: no-op unless EMAIL_SENDING_ACCOUNT_ID,
+ * EMAIL_SENDING_API_TOKEN, and NOTIFY_FROM are all set (from must be an
+ * onboarded domain). Returns number of emails sent.
+ */
+async function notifySubscribers(events) {
+  const accountId = env.EMAIL_SENDING_ACCOUNT_ID;
+  const apiToken = env.EMAIL_SENDING_API_TOKEN;
+  const from = env.NOTIFY_FROM;
+  if (!accountId || !apiToken || !from || events.length === 0) return 0;
+
+  // Group affected services, load their subscribers.
+  const affected = [...new Set(events.map((e) => e.serviceId))];
+  const byEmail = new Map();
+  for (const serviceId of affected) {
+    const rows = await query(
+      "SELECT email FROM subscribers WHERE service_id = ?",
+      [serviceId]
+    );
+    for (const row of rows) {
+      const event = events.find((e) => e.serviceId === serviceId);
+      if (!event) continue;
+      if (!byEmail.has(row.email)) byEmail.set(row.email, []);
+      byEmail.get(row.email).push(event);
+    }
+  }
+
+  const endpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/email/sending/send`;
+  let sent = 0;
+  for (const [email, userEvents] of byEmail) {
+    const lines = userEvents
+      .map(
+        (e) =>
+          `[${e.currentStatus.toUpperCase()}] ${e.name} — ${e.url} (was ${e.previousStatus ?? "unknown"}, http ${e.httpStatus ?? "—"})`
+      )
+      .join("\n");
+    const unsub = `https://govstatusnepal.techyatraa.com/?unsub=${encodeURIComponent(email)}`;
+    const text = `${lines}\n\nGovStatus Nepal\nUnsubscribe: ${unsub}`;
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: email,
+          from: { address: from, name: "GovStatus Nepal" },
+          subject: `[GovStatus] ${userEvents.length} service update${userEvents.length > 1 ? "s" : ""}`,
+          text,
+          headers: { "List-Unsubscribe": `<${unsub}>` },
+        }),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (res.ok) {
+        sent += 1;
+      } else {
+        console.error(`[nepal-probe] email to ${email} failed: ${res.status} ${await res.text()}`);
+      }
+    } catch (err) {
+      console.error(`[nepal-probe] email to ${email} failed:`, err);
+    }
+  }
+  return sent;
 }
 
 main().catch((err) => {

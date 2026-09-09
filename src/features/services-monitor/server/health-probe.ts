@@ -24,7 +24,7 @@ const PROBE_TIMEOUT_MS = Math.max(1000, Number(process.env.PROBE_TIMEOUT_MS) || 
 const SLOW_THRESHOLD_MS = 3500;
 const HISTORY_SLOTS = 24;
 const HOUR_MS = 60 * 60 * 1000;
-const RETENTION_DAYS = 7;
+const RETENTION_DAYS = 90;
 /**
  * How often D1 is written. Probes still run every minute (live status is
  * served from the module cache), but persisting history every minute would
@@ -200,7 +200,7 @@ interface ProbeResult {
 }
 
 /**
- * 3-tier resilient probe:
+ * Single-probe attempt with the 3-tier resilient fallback:
  *  1. Primary undici probe (HTTP/1.1, browser UA, legacy TLS renegotiation)
  *  2. Relaxed-TLS undici retry (tolerates self-signed / missing CA chain gaps)
  *  3. Native node:https fallback (no ALPN extension, covers WebLogic/CentOS servers)
@@ -210,7 +210,7 @@ interface ProbeResult {
  *  - degraded:    responded but slow (>3500ms), 403 (WAF block), or 429 (rate limit)
  *  - down:        5xx, other 4xx, connection refused, or timeout
  */
-async function probeService(url: string): Promise<ProbeResult> {
+async function probeOnce(url: string): Promise<ProbeResult> {
   const startedAt = performance.now();
 
   try {
@@ -267,6 +267,49 @@ async function probeService(url: string): Promise<ProbeResult> {
     }
     return { status: "down", responseTime: null, httpStatus: null };
   }
+}
+
+/** Short delay before confirming a "down" reading, to absorb transient blips. */
+const CONFIRM_DELAY_MS = 2500;
+
+/**
+ * Probes `url` (plus an optional deep `checkUrl`) and returns the worse
+ * result. A result that looks "down" is re-probed once after a short delay and
+ * only reported down if it fails again — cuts single-fetch false alarms on
+ * flaky .np infra. For deep checks the worse of (homepage, checkUrl) wins.
+ */
+async function probeService(
+  url: string,
+  checkUrl?: string
+): Promise<ProbeResult> {
+  const first = await probeOnce(url);
+  let result = first;
+
+  // Deep check: also hit the critical endpoint and keep the worse outcome.
+  if (checkUrl && checkUrl !== url) {
+    const deep = await probeOnce(checkUrl);
+    result = worse(result, deep);
+  }
+
+  // Confirm a down reading before reporting it.
+  if (result.status === "down") {
+    await new Promise((resolve) => setTimeout(resolve, CONFIRM_DELAY_MS));
+    const confirm = await probeOnce(url);
+    if (confirm.status !== "down") result = confirm;
+  }
+
+  return result;
+}
+
+/** The worse of two probe results: down > degraded > operational. */
+function worse(a: ProbeResult, b: ProbeResult): ProbeResult {
+  const rank = { down: 2, degraded: 1, operational: 0 } as const;
+  if (rank[b.status] > rank[a.status]) return b;
+  if (rank[b.status] === rank[a.status]) {
+    // Prefer the result with an httpStatus (more diagnostic info).
+    return a.httpStatus != null ? a : b;
+  }
+  return a;
 }
 
 /* --------------------------- TLS certificate probe ------------------------- */
@@ -574,7 +617,7 @@ async function checkService(
   checkedAt: string,
   realHistory?: Map<number, HistoryRow>
 ): Promise<ServiceHealth> {
-  const live = await probeService(service.url);
+  const live = await probeService(service.url, service.checkUrl);
   const uptime24h = buildHistory(service, live, checkedAt, realHistory);
 
   return {
@@ -947,8 +990,23 @@ export function getServicesHealth(): Promise<HealthResponse> {
         cached = { data: snapshot, at: Date.now() };
         return snapshot;
       }
-      if (cached) return cached.data;
+      if (cached) {
+        // Serve-only snapshot read failed but we have a previous snapshot —
+        // keep serving it but flag the failure loudly so the mismatch that
+        // causes mass false "down" is never silent.
+        console.error(
+          "[govstatus] serve-only D1 snapshot read FAILED (stale config?). " +
+            "Serving cached snapshot from " + new Date(cached.at).toISOString() +
+            ". Check CLOUDFLARE_D1_DATABASE_ID matches the DB the Nepal probe writes."
+        );
+        return cached.data;
+      }
       // Fallback if D1 is temporarily unreachable: serve graceful simulated structure, never probe
+      console.error(
+        "[govstatus] serve-only D1 snapshot read FAILED and no cache. " +
+          "Falling back to simulated structure. Verify CLOUDFLARE_D1_DATABASE_ID " +
+          "points at the DB the Nepal probe writes, or served status will be wrong."
+      );
       const seeds = seedServiceSchema.array().parse(seedData);
       const checkedAt = new Date().toISOString();
       const fallbackServices: ServiceHealth[] = seeds.map((seed) => {

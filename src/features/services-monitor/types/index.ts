@@ -35,6 +35,12 @@ export const seedServiceSchema = z.object({
   url: z.url(),
   category: serviceCategorySchema,
   description: z.string(),
+  /**
+   * Optional deep-check endpoint: a key API/flow URL (login, search, status)
+   * that must also respond for the service to count as up. When set, the probe
+   * hits this in addition to the homepage and reports the worse result.
+   */
+  checkUrl: z.url().optional(),
 });
 export type SeedService = z.infer<typeof seedServiceSchema>;
 

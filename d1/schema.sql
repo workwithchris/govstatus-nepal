@@ -29,3 +29,13 @@ CREATE TABLE IF NOT EXISTS service_meta (
   cert_expires_at_ms INTEGER,          -- epoch ms of TLS cert expiry (null = not probed)
   cert_checked_at_ms INTEGER           -- when the cert was last probed
 );
+
+-- Public per-service email subscriptions for status-change notifications.
+CREATE TABLE IF NOT EXISTS subscribers (
+  email TEXT NOT NULL,
+  service_id TEXT NOT NULL,
+  created_at_ms INTEGER NOT NULL,
+  PRIMARY KEY (email, service_id)
+);
+CREATE INDEX IF NOT EXISTS idx_subscribers_service
+  ON subscribers (service_id);
