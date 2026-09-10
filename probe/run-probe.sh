@@ -7,7 +7,9 @@
 # previous run is still going, this exits immediately instead of double-writing.
 set -euo pipefail
 
-REPO="/Users/leanqdigital/Desktop/projects/personal/govstatus"
+# Repo root: directory containing this script's parent. Override with
+# GOVSTATUS_REPO when the checkout lives elsewhere.
+REPO="${GOVSTATUS_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 LOCK="${TMPDIR:-/tmp}/govstatus-probe.lock"
 
 # Atomic lock via mkdir (flock isn't on this macOS).

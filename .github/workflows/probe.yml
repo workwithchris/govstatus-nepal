@@ -1,0 +1,46 @@
+name: Probe
+
+# Runs the Nepal-vantage probe every 5 minutes and writes hourly aggregates +
+# current state straight to D1. NOTE: GitHub runners are foreign (Azure)
+# datacenter IPs — .np WAFs may mark some healthy portals degraded/down. This
+# exists to keep history continuous when the Nepal-IP probe machine is asleep.
+# The accurate vantage is still the Nepal-IP machine (probe/run-probe.sh).
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    name: Probe all services → D1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Probe and persist to D1
+        run: node probe/nepal-probe.mjs
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # Intentionally unset: ALERT_WEBHOOK_URL — alerts stay owned by the
+          # Nepal-IP probe so transitions never double-send from both writers.
