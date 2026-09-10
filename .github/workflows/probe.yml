@@ -1,10 +1,10 @@
 name: Probe
 
-# Runs the Nepal-vantage probe every 5 minutes and writes hourly aggregates +
-# current state straight to D1. NOTE: GitHub runners are foreign (Azure)
-# datacenter IPs — .np WAFs may mark some healthy portals degraded/down. This
-# exists to keep history continuous when the Nepal-IP probe machine is asleep.
-# The accurate vantage is still the Nepal-IP machine (probe/run-probe.sh).
+# Probe all services and persist hourly aggregates to D1.
+# NOTE: GitHub runners are foreign (Azure) datacenter IPs — .np WAFs may mark
+# some healthy portals degraded/down. This keeps history continuous when the
+# Nepal-IP probe machine is asleep; the accurate vantage is the Nepal-IP machine
+# (probe/run-probe.sh).
 
 on:
   schedule:
