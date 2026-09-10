@@ -65,6 +65,39 @@ type BucketRowWithOutcomes = BucketRow & OutcomeRow;
 
 const seedById = new Map(seedData.map((seed) => [seed.id, seed]));
 
+/**
+ * Foreign-vantage rows fill only hours the Nepal probe has no row for; Nepal
+ * always wins on conflict. Foreign data is deliberately less trusted (WAF
+ * blocks / slow international routes) and stored separately.
+ */
+function mergePreferred<T extends { bucket_ms: number }>(
+  nepal: T[],
+  foreign: T[]
+): T[] {
+  const byBucket = new Map<number, T>();
+  for (const row of foreign) byBucket.set(row.bucket_ms, row);
+  for (const row of nepal) byBucket.set(row.bucket_ms, row);
+  return [...byBucket.values()].sort((a, b) => a.bucket_ms - b.bucket_ms);
+}
+
+/** Foreign bucket rows for gap-filling; [] when the table is absent/unreadable. */
+async function readForeignBuckets(
+  serviceId: string,
+  sinceMs: number
+): Promise<BucketRow[]> {
+  try {
+    return await d1Query<BucketRow>(
+      `SELECT bucket_ms, worst_status, sample_count, sum_response_ms
+       FROM status_checks_foreign
+       WHERE service_id = ? AND bucket_ms >= ?
+       ORDER BY bucket_ms`,
+      [serviceId, sinceMs]
+    );
+  } catch {
+    return [];
+  }
+}
+
 /** Loads raw hourly bucket rows for a service since `sinceMs` ([] on failure). */
 async function readBuckets(
   serviceId: string,
@@ -75,13 +108,17 @@ async function readBuckets(
   if (!seed) return [];
 
   try {
-    return await d1Query<BucketRow>(
-      `SELECT bucket_ms, worst_status, sample_count, sum_response_ms
-       FROM status_checks
-       WHERE service_id = ? AND bucket_ms >= ?
-       ORDER BY bucket_ms`,
-      [serviceId, sinceMs]
-    );
+    const [nepalRows, foreignRows] = await Promise.all([
+      d1Query<BucketRow>(
+        `SELECT bucket_ms, worst_status, sample_count, sum_response_ms
+         FROM status_checks
+         WHERE service_id = ? AND bucket_ms >= ?
+         ORDER BY bucket_ms`,
+        [serviceId, sinceMs]
+      ),
+      readForeignBuckets(serviceId, sinceMs),
+    ]);
+    return mergePreferred(nepalRows, foreignRows);
   } catch (err) {
     console.error("[govstatus] history read failed:", err);
     return [];
@@ -195,7 +232,8 @@ export async function getHourlyHistory(
     }
   }
 
-  return rows.map(bucketToHourly);
+  const foreignRows = await readForeignBuckets(serviceId, sinceMs);
+  return mergePreferred<BucketRowWithOutcomes>(rows, foreignRows).map(bucketToHourly);
 }
 
 export const historyQuerySchema = z.object({

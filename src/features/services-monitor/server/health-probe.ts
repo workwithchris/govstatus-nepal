@@ -529,22 +529,35 @@ interface HistoryRow {
 type HistoryIndex = Map<string, Map<number, HistoryRow>>;
 
 async function loadHistory(sinceMs: number): Promise<HistoryIndex> {
-  const rows = await d1Query<HistoryRow>(
-    `SELECT service_id, bucket_ms, worst_status, sample_count, sum_response_ms, checked_at_ms
-     FROM status_checks
-     WHERE bucket_ms >= ?`,
-    [sinceMs]
-  );
+  const [nepalRows, foreignRows] = await Promise.all([
+    d1Query<HistoryRow>(
+      `SELECT service_id, bucket_ms, worst_status, sample_count, sum_response_ms, checked_at_ms
+       FROM status_checks
+       WHERE bucket_ms >= ?`,
+      [sinceMs]
+    ),
+    // Best-effort: absent on a pre-migration DB, and only used to fill hours
+    // the Nepal-vantage probe has no row for.
+    d1Query<HistoryRow>(
+      `SELECT service_id, bucket_ms, worst_status, sample_count, sum_response_ms, checked_at_ms
+       FROM status_checks_foreign
+       WHERE bucket_ms >= ?`,
+      [sinceMs]
+    ).catch(() => [] as HistoryRow[]),
+  ]);
 
   const index: HistoryIndex = new Map();
-  for (const row of rows) {
+  const put = (row: HistoryRow, overwrite: boolean) => {
     let byHour = index.get(row.service_id);
     if (!byHour) {
       byHour = new Map();
       index.set(row.service_id, byHour);
     }
-    byHour.set(row.bucket_ms, row);
-  }
+    if (overwrite || !byHour.has(row.bucket_ms)) byHour.set(row.bucket_ms, row);
+  };
+  // Foreign readings only fill gaps; Nepal-vantage rows always win the hour.
+  for (const row of foreignRows) put(row, false);
+  for (const row of nepalRows) put(row, true);
   return index;
 }
 

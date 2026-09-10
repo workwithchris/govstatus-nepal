@@ -73,6 +73,17 @@ if (!d1Config && !DRY_RUN) {
   process.exit(1);
 }
 
+/**
+ * Foreign-vantage fallback mode. Set FOREIGN_VANTAGE=true when running from a
+ * non-Nepal vantage (e.g. GitHub Actions) to keep history continuous while the
+ * Nepal-IP machine sleeps. Foreign readings are less trustworthy (WAF blocks /
+ * slow international routes), so they are written to a separate
+ * `status_checks_foreign` table and never touch `service_meta` or alerts.
+ * Readers prefer the Nepal table and fall back to this one per missing hour.
+ */
+const FOREIGN_VANTAGE = env.FOREIGN_VANTAGE === "true";
+const STATUS_TABLE = FOREIGN_VANTAGE ? "status_checks_foreign" : "status_checks";
+
 /* ------------------------------ concurrency ------------------------------ */
 
 /** Runs `fn` over `items` with at most `limit` concurrent calls. */
@@ -445,8 +456,14 @@ async function main() {
   const skippedSeeds = seeds.filter((seed) => !dueSeeds.includes(seed));
 
   const [metaRows, certResults] = await Promise.all([
-    d1Config ? query("SELECT service_id, last_status, cert_expires_at_ms FROM service_meta") : Promise.resolve([]),
-    mapLimit(dueSeeds, 15, async (s) => ({ id: s.id, expiresMs: await probeCertExpiryMs(s.url) })),
+    !FOREIGN_VANTAGE && d1Config
+      ? query("SELECT service_id, last_status, cert_expires_at_ms FROM service_meta")
+      : Promise.resolve([]),
+    // Cert probing is pointless for foreign runs: it only feeds service_meta,
+    // which foreign runs never write.
+    FOREIGN_VANTAGE
+      ? Promise.resolve([])
+      : mapLimit(dueSeeds, 15, async (s) => ({ id: s.id, expiresMs: await probeCertExpiryMs(s.url) })),
   ]);
   const prevMeta = new Map(metaRows.map((r) => [r.service_id, r]));
 
@@ -490,7 +507,7 @@ async function main() {
       if (withOutcomes) {
         const outcome = OUTCOME_COLS.map((col) => (outcomeColForProbe(probe) === col ? 1 : 0));
         statements.push({
-          sql: `INSERT INTO status_checks (service_id, bucket_ms, worst_status, sample_count, sum_response_ms, checked_at_ms, ${OUTCOME_COLS.join(", ")})
+          sql: `INSERT INTO ${STATUS_TABLE} (service_id, bucket_ms, worst_status, sample_count, sum_response_ms, checked_at_ms, ${OUTCOME_COLS.join(", ")})
                 VALUES (?, ?, ?, 1, ?, ?, ${OUTCOME_COLS.map(() => "?").join(", ")})
                 ON CONFLICT(service_id, bucket_ms) DO UPDATE SET
                   worst_status = CASE
@@ -505,7 +522,7 @@ async function main() {
         });
       } else {
         statements.push({
-          sql: `INSERT INTO status_checks (service_id, bucket_ms, worst_status, sample_count, sum_response_ms, checked_at_ms)
+          sql: `INSERT INTO ${STATUS_TABLE} (service_id, bucket_ms, worst_status, sample_count, sum_response_ms, checked_at_ms)
                 VALUES (?, ?, ?, 1, ?, ?)
                 ON CONFLICT(service_id, bucket_ms) DO UPDATE SET
                   worst_status = CASE
@@ -518,8 +535,10 @@ async function main() {
           params: [seed.id, bucketMs, probe.status, probe.responseTime ?? 0, checkedAtMs],
         });
       }
-      statements.push({
-        sql: `INSERT INTO service_meta
+      // Foreign runs must never clobber current status or cert caches.
+      if (!FOREIGN_VANTAGE) {
+        statements.push({
+          sql: `INSERT INTO service_meta
                 (service_id, last_status, last_checked_at_ms, cert_expires_at_ms, cert_checked_at_ms)
               VALUES (?, ?, ?, ?, ?)
               ON CONFLICT(service_id) DO UPDATE SET
@@ -527,11 +546,12 @@ async function main() {
                 last_checked_at_ms = excluded.last_checked_at_ms,
                 cert_expires_at_ms = COALESCE(excluded.cert_expires_at_ms, service_meta.cert_expires_at_ms),
                 cert_checked_at_ms = COALESCE(excluded.cert_checked_at_ms, service_meta.cert_checked_at_ms)`,
-        params: [seed.id, probe.status, checkedAtMs, certs.get(seed.id) ?? null, certs.has(seed.id) ? checkedAtMs : null],
-      });
+          params: [seed.id, probe.status, checkedAtMs, certs.get(seed.id) ?? null, certs.has(seed.id) ? checkedAtMs : null],
+        });
+      }
     }
     statements.push({
-      sql: "DELETE FROM status_checks WHERE bucket_ms < ?",
+      sql: `DELETE FROM ${STATUS_TABLE} WHERE bucket_ms < ?`,
       params: [checkedAtMs - RETENTION_DAYS * 24 * HOUR_MS],
     });
     return statements;
@@ -544,12 +564,15 @@ async function main() {
     await batch(buildStatements(false));
   }
 
-  // Transitions → alert webhook (same payload shape as the app).
+  // Transitions → alert webhook (same payload shape as the app). Foreign runs
+  // never alert: their readings are approximate and would cause false pages.
   const events = [];
-  for (const { seed, probe } of results) {
-    const prev = prevMeta.get(seed.id)?.last_status ?? null;
-    if (prev === null || prev === probe.status) continue;
-    events.push({ serviceId: seed.id, name: seed.name, url: seed.url, previousStatus: prev, currentStatus: probe.status, httpStatus: probe.httpStatus });
+  if (!FOREIGN_VANTAGE) {
+    for (const { seed, probe } of results) {
+      const prev = prevMeta.get(seed.id)?.last_status ?? null;
+      if (prev === null || prev === probe.status) continue;
+      events.push({ serviceId: seed.id, name: seed.name, url: seed.url, previousStatus: prev, currentStatus: probe.status, httpStatus: probe.httpStatus });
+    }
   }
   if (events.length > 0 && env.ALERT_WEBHOOK_URL) {
     const text = events

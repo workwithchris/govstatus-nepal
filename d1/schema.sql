@@ -31,6 +31,30 @@ CREATE TABLE IF NOT EXISTS status_checks (
 CREATE INDEX IF NOT EXISTS idx_status_checks_time
   ON status_checks (bucket_ms);
 
+-- status_checks_foreign: same shape as status_checks, written by the
+-- foreign-vantage fallback probe (e.g. GitHub Actions) when the Nepal-IP probe
+-- machine is asleep. Kept separate so its less-trustworthy readings can never
+-- overwrite or degrade the Nepal-vantage buckets. Readers prefer the Nepal
+-- table and fall back to this one only for hours Nepal has no row for.
+CREATE TABLE IF NOT EXISTS status_checks_foreign (
+  service_id TEXT NOT NULL,
+  bucket_ms INTEGER NOT NULL,
+  worst_status TEXT NOT NULL CHECK (worst_status IN ('operational', 'degraded', 'down')),
+  sample_count INTEGER NOT NULL DEFAULT 0,
+  sum_response_ms INTEGER NOT NULL DEFAULT 0,
+  checked_at_ms INTEGER NOT NULL,
+  outcome_ok INTEGER NOT NULL DEFAULT 0,
+  outcome_slow INTEGER NOT NULL DEFAULT 0,
+  outcome_blocked INTEGER NOT NULL DEFAULT 0,
+  outcome_rate_limited INTEGER NOT NULL DEFAULT 0,
+  outcome_http5xx INTEGER NOT NULL DEFAULT 0,
+  outcome_network INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (service_id, bucket_ms)
+);
+
+CREATE INDEX IF NOT EXISTS idx_status_checks_foreign_time
+  ON status_checks_foreign (bucket_ms);
+
 CREATE TABLE IF NOT EXISTS service_meta (
   service_id TEXT PRIMARY KEY,
   last_status TEXT NOT NULL CHECK (last_status IN ('operational', 'degraded', 'down')),

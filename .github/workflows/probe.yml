@@ -53,5 +53,9 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           PROBE_SHARD: ${{ matrix.shard }}
           PROBE_SHARDS: "4"
+          # Foreign (Azure) vantage: write to status_checks_foreign only — never
+          # service_meta or alerts — so Nepal-vantage data is never degraded.
+          FOREIGN_VANTAGE: "true"
+          VANTAGE_NAME: foreign
           # Intentionally unset: ALERT_WEBHOOK_URL — alerts stay owned by the
           # Nepal-IP probe so transitions never double-send from both writers.
