@@ -52,7 +52,7 @@ export default function Image() {
             online?
           </div>
           <div style={{ fontSize: 30, color: "#a1a1aa", marginTop: 24 }}>
-            Real-time uptime for {seedData.length} Nepal government portals
+            {`Real-time uptime for ${seedData.length} Nepal government portals`}
           </div>
         </div>
 
