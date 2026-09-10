@@ -93,7 +93,15 @@ async function mapLimit(items, limit, fn) {
 
 /* -------------------------------- probing -------------------------------- */
 
-const seeds = JSON.parse(readFileSync(join(ROOT, "src/data/seed-services.json"), "utf8"));
+const allSeeds = JSON.parse(readFileSync(join(ROOT, "src/data/seed-services.json"), "utf8"));
+// Optional sharding: PROBE_SHARD/PROBE_SHARDS split the catalog across parallel
+// runners (shard N takes indexes i % SHARDS === N). Unset = probe everything.
+const SHARD = Number(env.PROBE_SHARD);
+const SHARDS = Number(env.PROBE_SHARDS);
+const seeds =
+  SHARDS > 0 && Number.isInteger(SHARD) && SHARD >= 0 && SHARD < SHARDS
+    ? allSeeds.filter((_, i) => i % SHARDS === SHARD)
+    : allSeeds;
 // Browser-like UA: .np WAFs reset/stall the old self-describing bot UA
 // (kathmandu.gov.np, nea.org.np) but serve normal responses to a browser UA.
 const USER_AGENT =

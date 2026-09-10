@@ -1,10 +1,14 @@
 name: Probe
 
-# Probe all services and persist hourly aggregates to D1.
-# NOTE: GitHub runners are foreign (Azure) datacenter IPs — .np WAFs may mark
-# some healthy portals degraded/down. This keeps history continuous when the
-# Nepal-IP probe machine is asleep; the accurate vantage is the Nepal-IP machine
-# (probe/run-probe.sh).
+# Probes all services and persists hourly aggregates to D1. Triggered externally
+# every 5 minutes (cron-job.org -> workflow_dispatch API); GitHub's own schedule
+# is unreliable and kept only as a fallback.
+#
+# The catalog is sharded across parallel runners (PROBE_SHARD/PROBE_SHARDS) so a
+# full pass finishes in ~2 min instead of ~6. D1 writes are per-service upserts,
+# so shards never conflict. NOTE: runners are foreign (Azure) IPs — .np WAFs may
+# mark some healthy portals degraded/down. The accurate vantage is the Nepal-IP
+# machine (probe/run-probe.sh).
 
 on:
   schedule:
@@ -14,15 +18,20 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: probe
-  cancel-in-progress: false
-
 jobs:
   probe:
-    name: Probe all services → D1
+    name: Probe shard ${{ matrix.shard }}/4 → D1
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Per-shard group so the matrix jobs run in parallel (a shared group would
+    # serialize them). cancel-in-progress stays off to let active probes finish.
+    concurrency:
+      group: probe-${{ matrix.shard }}
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,5 +51,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PROBE_SHARD: ${{ matrix.shard }}
+          PROBE_SHARDS: "4"
           # Intentionally unset: ALERT_WEBHOOK_URL — alerts stay owned by the
           # Nepal-IP probe so transitions never double-send from both writers.
