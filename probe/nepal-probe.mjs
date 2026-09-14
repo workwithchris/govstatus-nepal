@@ -25,6 +25,11 @@ import tls from "node:tls";
 import http from "node:http";
 import https from "node:https";
 import { Agent, fetch as undiciFetch } from "undici";
+import {
+  closeAllProxyDispatchers,
+  getNepalProxyPool,
+  probeOnceThroughProxy,
+} from "./nepal-proxy-pool.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -83,6 +88,17 @@ if (!d1Config && !DRY_RUN) {
  */
 const FOREIGN_VANTAGE = env.FOREIGN_VANTAGE === "true";
 const STATUS_TABLE = FOREIGN_VANTAGE ? "status_checks_foreign" : "status_checks";
+
+/**
+ * Route probes through scraped Nepal public proxies (probe/nepal-proxy-pool.mjs)
+ * so the foreign GitHub Actions vantage gets a Nepal egress. A proxy-layer
+ * failure yields no sample (service skipped this cycle) and is NEVER written as
+ * "down" — see the safety contract in nepal-proxy-pool.mjs. Intended for
+ * FOREIGN_VANTAGE runs only; using it for the authoritative table would let an
+ * untrusted proxy pool feed service_meta/alerts.
+ */
+const USE_PROXY_POOL = env.USE_PROXY_POOL === "true";
+const PROXY_MAX_ATTEMPTS = Math.max(1, Number(env.PROXY_MAX_ATTEMPTS) || 2);
 
 /* ------------------------------ concurrency ------------------------------ */
 
@@ -276,6 +292,54 @@ async function probeService(url, checkUrl) {
   return result;
 }
 
+/**
+ * Proxy-backed variant of probeService using one sticky proxy for the whole
+ * service (homepage + checkUrl + confirmation), so the three requests share an
+ * exit IP and don't flap across exits. Returns null — meaning "skip this cycle,
+ * write nothing" — when no attempt produced an HTTP response. A transport
+ * failure never becomes a "down" reading.
+ */
+async function probeServiceThroughProxy(seed, pool) {
+  const probeOnceByProxy = (url, proxy) =>
+    probeOnceThroughProxy(url, proxy, {
+      timeoutMs: PROBE_TIMEOUT_MS,
+      slowThresholdMs: SLOW_THRESHOLD_MS,
+    });
+
+  for (let attempt = 0; attempt < PROXY_MAX_ATTEMPTS; attempt++) {
+    const proxy = pool.pick();
+    if (!proxy) {
+      console.warn("[nepal-probe] proxy pool exhausted — skipping remaining services");
+      return null;
+    }
+
+    let result = await probeOnceByProxy(seed.url, proxy);
+    if (result === null) {
+      pool.penalize(proxy, "connect");
+      continue;
+    }
+    if (seed.checkUrl && seed.checkUrl !== seed.url) {
+      const deep = await probeOnceByProxy(seed.checkUrl, proxy);
+      if (deep !== null) result = worse(result, deep);
+    }
+    if (result.status === "down") {
+      await new Promise((resolve) => setTimeout(resolve, CONFIRM_DELAY_MS));
+      const confirm = await probeOnceByProxy(seed.url, proxy);
+      // Couldn't re-reach the origin to confirm: ambiguous, so drop the proxy
+      // and retry on another rather than record a possibly-false "down".
+      if (confirm === null) {
+        pool.penalize(proxy, "confirm-connect");
+        continue;
+      }
+      if (confirm.status !== "down") result = confirm;
+    }
+
+    pool.reward(proxy);
+    return result;
+  }
+  return null;
+}
+
 async function probeCertExpiryMs(urlString) {
   try {
     const url = new URL(urlString);
@@ -467,14 +531,33 @@ async function main() {
   ]);
   const prevMeta = new Map(metaRows.map((r) => [r.service_id, r]));
 
-  const results = await mapLimit(dueSeeds, 15, async (seed) => {
-    const probe = await probeService(seed.url, seed.checkUrl);
+  let proxyPool = null;
+  if (USE_PROXY_POOL) {
+    const pool = await getNepalProxyPool();
+    const { healthy, total } = pool.summary();
+    console.log(`[nepal-probe] proxy pool: ${healthy}/${total} healthy`);
+    if (healthy === 0) console.warn("[nepal-probe] no usable proxies — every service will be skipped this cycle");
+    if (!FOREIGN_VANTAGE) {
+      console.warn("[nepal-probe] USE_PROXY_POOL without FOREIGN_VANTAGE — proxy readings would be treated as authoritative");
+    }
+    proxyPool = pool;
+  }
+
+  // With the proxy pool, a null probe means "proxy couldn't reach the origin";
+  // that service gets no sample this cycle (never a fabricated "down").
+  const rawResults = await mapLimit(dueSeeds, 15, async (seed) => {
+    const probe = proxyPool
+      ? await probeServiceThroughProxy(seed, proxyPool)
+      : await probeService(seed.url, seed.checkUrl);
+    if (probe === null) return null;
     cadence[seed.id] = updateCadence(
       cadence[seed.id] ?? { shift: 0, stress: 0, healthy: 0 },
       isStressful(probe)
     );
     return { seed, probe };
   });
+  const proxySkipped = rawResults.filter((r) => r === null).length;
+  const results = rawResults.filter((r) => r !== null);
 
   // Backed-off services keep their last persisted status in D1 — no new
   // sample is written this cycle (the hourly bucket simply gets no extra
@@ -485,7 +568,8 @@ async function main() {
 
   if (DRY_RUN) {
     const count = (s) => results.filter((r) => r.probe.status === s).length;
-    console.log(`[dry-run] ${checkedAt} · total=${seeds.length} probed=${results.length} skipped=${skippedSeeds.length} operational=${count("operational")} degraded=${count("degraded")} down=${count("down")} certs=${certs.size}`);
+    if (proxyPool) closeAllProxyDispatchers();
+    console.log(`[dry-run] ${checkedAt} · total=${seeds.length} probed=${results.length} proxy-skipped=${proxySkipped} skipped=${skippedSeeds.length} operational=${count("operational")} degraded=${count("degraded")} down=${count("down")} certs=${certs.size}`);
     return;
   }
 
@@ -595,8 +679,9 @@ async function main() {
   const emailSent = await notifySubscribers(events);
 
   const count = (s) => results.filter((r) => r.probe.status === s).length;
+  if (proxyPool) closeAllProxyDispatchers();
   console.log(
-    `[nepal-probe] ${checkedAt} · vantage=${env.VANTAGE_NAME ?? "default"} bucket=${bucketMs} probed=${results.length} skipped=${skippedSeeds.length} operational=${count("operational")} degraded=${count("degraded")} down=${count("down")} certs=${certs.size} alerts=${events.length} emails=${emailSent}`
+    `[nepal-probe] ${checkedAt} · vantage=${env.VANTAGE_NAME ?? "default"} bucket=${bucketMs} probed=${results.length} proxy-skipped=${proxySkipped} skipped=${skippedSeeds.length} operational=${count("operational")} degraded=${count("degraded")} down=${count("down")} certs=${certs.size} alerts=${events.length} emails=${emailSent}`
   );
 }
 

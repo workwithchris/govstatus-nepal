@@ -57,5 +57,11 @@ jobs:
           # service_meta or alerts — so Nepal-vantage data is never degraded.
           FOREIGN_VANTAGE: "true"
           VANTAGE_NAME: foreign
+          # Route the foreign probe through scraped Nepal public proxies so .np
+          # WAFs see a Nepal egress. A proxy that can't reach the origin yields
+          # no sample (never "down"); see probe/nepal-proxy-pool.mjs.
+          USE_PROXY_POOL: "true"
+          PROXY_PREFLIGHT: "true"
+          PROXY_REQUIRE_NEPAL: "true"
           # Intentionally unset: ALERT_WEBHOOK_URL — alerts stay owned by the
           # Nepal-IP probe so transitions never double-send from both writers.
