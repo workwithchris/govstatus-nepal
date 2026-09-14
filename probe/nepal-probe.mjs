@@ -99,6 +99,14 @@ const STATUS_TABLE = FOREIGN_VANTAGE ? "status_checks_foreign" : "status_checks"
  */
 const USE_PROXY_POOL = env.USE_PROXY_POOL === "true";
 const PROXY_MAX_ATTEMPTS = Math.max(1, Number(env.PROXY_MAX_ATTEMPTS) || 2);
+/**
+ * When a service can't be probed through any proxy (pool empty, or every proxy
+ * failed to reach the origin), fall back to a direct probe instead of writing
+ * no sample. The result still lands only in status_checks_foreign, so a mixed
+ * vantage stays isolated from service_meta/alerts. Set PROXY_FALLBACK_DIRECT=false
+ * to skip instead.
+ */
+const PROXY_FALLBACK_DIRECT = env.PROXY_FALLBACK_DIRECT !== "false";
 
 /* ------------------------------ concurrency ------------------------------ */
 
@@ -295,9 +303,9 @@ async function probeService(url, checkUrl) {
 /**
  * Proxy-backed variant of probeService using one sticky proxy for the whole
  * service (homepage + checkUrl + confirmation), so the three requests share an
- * exit IP and don't flap across exits. Returns null — meaning "skip this cycle,
- * write nothing" — when no attempt produced an HTTP response. A transport
- * failure never becomes a "down" reading.
+ * exit IP and don't flap across exits. Returns null when no attempt produced an
+ * HTTP response (the caller then either falls back to a direct probe or skips);
+ * a transport failure never becomes a "down" reading.
  */
 async function probeServiceThroughProxy(seed, pool) {
   const probeOnceByProxy = (url, proxy) =>
@@ -308,10 +316,7 @@ async function probeServiceThroughProxy(seed, pool) {
 
   for (let attempt = 0; attempt < PROXY_MAX_ATTEMPTS; attempt++) {
     const proxy = pool.pick();
-    if (!proxy) {
-      console.warn("[nepal-probe] proxy pool exhausted — skipping remaining services");
-      return null;
-    }
+    if (!proxy) return null;
 
     let result = await probeOnceByProxy(seed.url, proxy);
     if (result === null) {
@@ -536,26 +541,38 @@ async function main() {
     const pool = await getNepalProxyPool();
     const { healthy, total } = pool.summary();
     console.log(`[nepal-probe] proxy pool: ${healthy}/${total} healthy`);
-    if (healthy === 0) console.warn("[nepal-probe] no usable proxies — every service will be skipped this cycle");
+    if (healthy === 0) {
+      console.warn(
+        PROXY_FALLBACK_DIRECT
+          ? "[nepal-probe] no usable proxies — falling back to direct foreign probe"
+          : "[nepal-probe] no usable proxies — every service will be skipped this cycle"
+      );
+    }
     if (!FOREIGN_VANTAGE) {
       console.warn("[nepal-probe] USE_PROXY_POOL without FOREIGN_VANTAGE — proxy readings would be treated as authoritative");
     }
     proxyPool = pool;
   }
 
-  // With the proxy pool, a null probe means "proxy couldn't reach the origin";
-  // that service gets no sample this cycle (never a fabricated "down").
+  // With the proxy pool, a null probe means no proxy could reach the origin.
+  // Fall back to a direct probe (or skip, if PROXY_FALLBACK_DIRECT=false) so a
+  // blocked/dead pool degrades to the previous foreign behavior, never to a
+  // fabricated "down".
   const rawResults = await mapLimit(dueSeeds, 15, async (seed) => {
-    const probe = proxyPool
-      ? await probeServiceThroughProxy(seed, proxyPool)
-      : await probeService(seed.url, seed.checkUrl);
-    if (probe === null) return null;
+    let probe = proxyPool ? await probeServiceThroughProxy(seed, proxyPool) : null;
+    const viaProxy = probe !== null;
+    if (probe === null) {
+      if (proxyPool && !PROXY_FALLBACK_DIRECT) return null;
+      probe = await probeService(seed.url, seed.checkUrl);
+    }
     cadence[seed.id] = updateCadence(
       cadence[seed.id] ?? { shift: 0, stress: 0, healthy: 0 },
       isStressful(probe)
     );
-    return { seed, probe };
+    return { seed, probe, viaProxy };
   });
+  const proxied = rawResults.filter((r) => r && r.viaProxy).length;
+  const directFallback = rawResults.filter((r) => r && !r.viaProxy).length;
   const proxySkipped = rawResults.filter((r) => r === null).length;
   const results = rawResults.filter((r) => r !== null);
 
@@ -569,7 +586,7 @@ async function main() {
   if (DRY_RUN) {
     const count = (s) => results.filter((r) => r.probe.status === s).length;
     if (proxyPool) closeAllProxyDispatchers();
-    console.log(`[dry-run] ${checkedAt} · total=${seeds.length} probed=${results.length} proxy-skipped=${proxySkipped} skipped=${skippedSeeds.length} operational=${count("operational")} degraded=${count("degraded")} down=${count("down")} certs=${certs.size}`);
+    console.log(`[dry-run] ${checkedAt} · total=${seeds.length} probed=${results.length} proxied=${proxied} direct=${directFallback} proxy-skipped=${proxySkipped} skipped=${skippedSeeds.length} operational=${count("operational")} degraded=${count("degraded")} down=${count("down")} certs=${certs.size}`);
     return;
   }
 
@@ -681,7 +698,7 @@ async function main() {
   const count = (s) => results.filter((r) => r.probe.status === s).length;
   if (proxyPool) closeAllProxyDispatchers();
   console.log(
-    `[nepal-probe] ${checkedAt} · vantage=${env.VANTAGE_NAME ?? "default"} bucket=${bucketMs} probed=${results.length} proxy-skipped=${proxySkipped} skipped=${skippedSeeds.length} operational=${count("operational")} degraded=${count("degraded")} down=${count("down")} certs=${certs.size} alerts=${events.length} emails=${emailSent}`
+    `[nepal-probe] ${checkedAt} · vantage=${env.VANTAGE_NAME ?? "default"} bucket=${bucketMs} probed=${results.length} proxied=${proxied} direct=${directFallback} proxy-skipped=${proxySkipped} skipped=${skippedSeeds.length} operational=${count("operational")} degraded=${count("degraded")} down=${count("down")} certs=${certs.size} alerts=${events.length} emails=${emailSent}`
   );
 }
 

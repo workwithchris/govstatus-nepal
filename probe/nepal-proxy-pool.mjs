@@ -28,7 +28,10 @@ import https from "node:https";
 import { pathToFileURL } from "node:url";
 import { fetch as undiciFetch, ProxyAgent } from "undici";
 
-const SOURCE_URL = "https://www.freeproxy.world/?country=NP";
+const FREEPROXY_URL = "https://www.freeproxy.world/?country=NP";
+// Structured JSON with per-proxy protocols/anonymity/uptime — no HTML to parse,
+// used as a fallback when FreeProxy.World's Cloudflare edge 403s the runner IP.
+const GEONODE_URL = "https://proxylist.geonode.com/api/proxy-list?limit=100&page=1&country=NP";
 // Browser-like UA: the source also fronts a CDN/WAF that rejects self-describing
 // bots. Same rationale as the probe's own UA (see nepal-probe.mjs).
 const BROWSER_HEADERS = {
@@ -36,6 +39,12 @@ const BROWSER_HEADERS = {
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
   "Accept-Language": "en-US,en;q=0.9",
+  Referer: "https://www.freeproxy.world/",
+  "Upgrade-Insecure-Requests": "1",
+  "Sec-Fetch-Dest": "document",
+  "Sec-Fetch-Mode": "navigate",
+  "Sec-Fetch-Site": "none",
+  "Sec-Fetch-User": "?1",
 };
 
 /* ------------------------------ table parsing ----------------------------- */
@@ -113,8 +122,42 @@ export async function parseProxies(html) {
       lastChecked: cLast >= 0 ? $(tds[cLast]).text().trim() : "",
       // Latency the source reports; replaced by measured rttMs after preflight.
       speedMs: speedMatch ? Number(speedMatch[1]) : null,
+      source: "freeproxy.world",
     });
   });
+  return proxies;
+}
+
+/**
+ * Parses Geonode's JSON proxy list. A record may advertise several protocols;
+ * one entry is emitted per supported protocol.
+ */
+export function parseGeonode(payload) {
+  const rows = Array.isArray(payload?.data) ? payload.data : [];
+  const proxies = [];
+  for (const row of rows) {
+    const host = String(row.ip ?? "").trim();
+    const port = Number(row.port);
+    if (!isValidIpv4(host) || !Number.isInteger(port) || port < 1 || port > 65535) continue;
+    const protocols = Array.isArray(row.protocols) ? row.protocols : [];
+    for (const raw of protocols) {
+      const protocol = normalizeProtocol(raw);
+      if (!protocol) continue;
+      const speed = Number(row.responseTime ?? row.speed);
+      proxies.push({
+        id: `${protocol}://${host}:${port}`,
+        host,
+        port,
+        protocol,
+        anonymity: normalizeAnonymity(row.anonymityLevel),
+        city: row.city ?? "",
+        lastChecked: row.lastChecked ? new Date(row.lastChecked * 1000).toISOString() : "",
+        speedMs: Number.isFinite(speed) ? speed : null,
+        uptime: typeof row.upTime === "number" ? row.upTime : null,
+        source: "geonode",
+      });
+    }
+  }
   return proxies;
 }
 
@@ -287,25 +330,78 @@ export async function probeOnceThroughProxy(urlString, proxy, options = {}) {
 
 /* --------------------------------- scrape --------------------------------- */
 
+/** GET with a couple of retries and short backoff (transient WAF/5xx). */
+async function fetchText(urlString, { headers, timeoutMs, attempts = 3, logger, label }) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(urlString, { headers, signal: controller.signal, redirect: "follow" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.text();
+    } catch (err) {
+      lastError = err;
+      if (attempt < attempts) await new Promise((r) => setTimeout(r, 400 * attempt));
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  logger.error?.(`[proxy-pool] ${label} failed after ${attempts} attempts: ${lastError?.message ?? lastError}`);
+  return null;
+}
+
+/** Scrapes FreeProxy.World's HTML results table. */
+export async function scrapeFreeProxyWorld(options = {}) {
+  const html = await fetchText(options.sourceUrl ?? FREEPROXY_URL, {
+    headers: BROWSER_HEADERS,
+    timeoutMs: options.timeoutMs ?? 15000,
+    attempts: options.attempts ?? 3,
+    logger: options.logger ?? console,
+    label: "freeproxy.world",
+  });
+  return html ? parseProxies(html) : [];
+}
+
+/** Scrapes Geonode's JSON API. */
+export async function scrapeGeonode(options = {}) {
+  const text = await fetchText(options.geonodeUrl ?? GEONODE_URL, {
+    headers: { ...BROWSER_HEADERS, Accept: "application/json" },
+    timeoutMs: options.timeoutMs ?? 15000,
+    attempts: options.attempts ?? 3,
+    logger: options.logger ?? console,
+    label: "geonode",
+  });
+  if (!text) return [];
+  try {
+    return parseGeonode(JSON.parse(text));
+  } catch (err) {
+    options.logger?.error?.(`[proxy-pool] geonode parse failed: ${err?.message ?? err}`);
+    return [];
+  }
+}
+
+/**
+ * Scrapes every source and unions the results (deduped by protocol://host:port),
+ * so one source being blocked doesn't zero the pool. Individual source failures
+ * are logged and skipped.
+ */
 export async function scrapeNepalProxies(options = {}) {
   const logger = options.logger ?? console;
-  const sourceUrl = options.sourceUrl ?? SOURCE_URL;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 15000);
-  try {
-    const res = await fetch(sourceUrl, {
-      headers: BROWSER_HEADERS,
-      signal: controller.signal,
-      redirect: "follow",
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await parseProxies(await res.text());
-  } catch (err) {
-    logger.error?.(`[proxy-pool] scrape failed: ${err?.message ?? err}`);
-    return [];
-  } finally {
-    clearTimeout(timer);
+  const sources = options.sources ?? [
+    { name: "freeproxy.world", scrape: scrapeFreeProxyWorld },
+    { name: "geonode", scrape: scrapeGeonode },
+  ];
+  const settled = await Promise.all(
+    sources.map(async (source) => ({ name: source.name, proxies: await source.scrape({ ...options, logger }) }))
+  );
+
+  const byId = new Map();
+  for (const { name, proxies } of settled) {
+    logger.log?.(`[proxy-pool] ${name}: ${proxies.length} Nepal proxies`);
+    for (const proxy of proxies) byId.set(proxy.id, proxy);
   }
+  return [...byId.values()];
 }
 
 /* -------------------------------- preflight ------------------------------- */
@@ -432,7 +528,7 @@ export async function getNepalProxyPool(options = {}) {
 
   const logger = options.logger ?? console;
   const scraped = await scrapeNepalProxies({ logger });
-  logger.log?.(`[proxy-pool] scraped ${scraped.length} Nepal proxies`);
+  logger.log?.(`[proxy-pool] ${scraped.length} unique Nepal proxies after dedupe`);
 
   const preflightEnabled = options.preflight ?? process.env.PROXY_PREFLIGHT !== "false";
   let usable = scraped;
@@ -466,7 +562,7 @@ if (isMain) {
     const exit = entry.country ? ` exit=${entry.country}` : "";
     const rtt = entry.rttMs ?? entry.speedMs;
     console.log(
-      `  ${entry.protocol.padEnd(7)} ${entry.host}:${entry.port}  ${entry.anonymity.padEnd(11)} rtt=${rtt ?? "?"}ms${exit}`
+      `  ${entry.protocol.padEnd(7)} ${entry.host}:${entry.port}  ${entry.anonymity.padEnd(11)} rtt=${rtt ?? "?"}ms${exit}  [${entry.source}]`
     );
   }
   closeAllProxyDispatchers();

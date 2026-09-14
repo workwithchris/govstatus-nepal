@@ -63,5 +63,8 @@ jobs:
           USE_PROXY_POOL: "true"
           PROXY_PREFLIGHT: "true"
           PROXY_REQUIRE_NEPAL: "true"
+          # If no proxy is usable, still probe directly (foreign table only)
+          # so the run degrades to the old behavior instead of writing nothing.
+          PROXY_FALLBACK_DIRECT: "true"
           # Intentionally unset: ALERT_WEBHOOK_URL — alerts stay owned by the
           # Nepal-IP probe so transitions never double-send from both writers.
