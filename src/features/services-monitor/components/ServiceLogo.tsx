@@ -1,97 +1,85 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+
+import { cn } from "@/lib/utils";
 
 interface ServiceLogoProps {
   url: string;
   name: string;
 }
 
-const SIZES = [64, 128];
-/** Per-source load timeout — unreachable origins skip ahead quickly. */
-const LOAD_TIMEOUT_MS = 4000;
-
+/**
+ * Favicon sources, fastest/most-reliable first. Google's proxy is cached on a
+ * global CDN and answers in tens of ms, whereas many .np origins stall or hang
+ * on `/favicon.ico` — so we try the CDN first and fall back to the origin.
+ */
 function buildSources(url: string): string[] {
   const { origin, hostname } = new URL(url);
   return [
-    `${origin}/favicon.ico`,
-    ...SIZES.map(
-      (size) => `https://www.google.com/s2/favicons?domain=${hostname}&sz=${size}`
-    ),
+    `https://www.google.com/s2/favicons?domain=${hostname}&sz=64`,
     `https://icons.duckduckgo.com/ip3/${hostname}.ico`,
+    `${origin}/favicon.ico`,
+    `https://www.google.com/s2/favicons?domain=${hostname}&sz=128`,
   ];
 }
 
-/** Resolves when the image decodes, or false on error/timeout. */
-function tryLoad(src: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    const timer = setTimeout(() => {
-      img.onload = img.onerror = null;
-      img.src = "";
-      resolve(false);
-    }, LOAD_TIMEOUT_MS);
-    img.onload = () => {
-      clearTimeout(timer);
-      resolve(true);
-    };
-    img.onerror = () => {
-      clearTimeout(timer);
-      resolve(false);
-    };
-    img.src = src;
-  });
-}
+/** Hostname → winning source, so repeat mounts paint instantly. */
+const resolvedCache = new Map<string, string>();
 
 /**
- * Renders the service's own favicon with a verified fallback chain:
- * direct favicon.ico → Google s2 → DuckDuckGo → service initial.
- * Each candidate is pre-loaded in JS before being painted, so a broken
- * or hanging source never renders as a broken image.
+ * Renders the service favicon. The `<img>` is mounted immediately (the browser
+ * starts the request during first paint — no JS preload round trip) and steps
+ * to the next source on error. Until one loads, the service initial shows
+ * behind it, so a slow/hanging source never flashes a broken image.
  */
 export function ServiceLogo({ url, name }: ServiceLogoProps) {
-  const [resolvedSrc, setResolvedSrc] = useState<string | null>(null);
+  const { hostname } = new URL(url);
+  const cached = resolvedCache.get(hostname);
+  const sources = buildSources(url);
+  const ordered = cached
+    ? [cached, ...sources.filter((src) => src !== cached)]
+    : sources;
 
-  useEffect(() => {
-    let cancelled = false;
-    const sources = buildSources(url);
+  const [step, setStep] = useState(0);
+  const [loaded, setLoaded] = useState(false);
 
-    (async () => {
-      for (const source of sources) {
-        if (cancelled) return;
-        if (await tryLoad(source)) {
-          if (!cancelled) setResolvedSrc(source);
-          return;
-        }
-      }
-      if (!cancelled) setResolvedSrc(null);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [url]);
-
-  if (!resolvedSrc) {
-    return (
-      <span
-        aria-hidden
-        className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted font-mono text-sm font-medium text-muted-foreground"
-      >
-        {name.charAt(0).toUpperCase()}
-      </span>
-    );
-  }
+  const src = ordered[step] ?? null;
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- tiny external favicon, no optimization pipeline wanted
-    <img
-      src={resolvedSrc}
-      alt={`${name} logo`}
+    <span
       aria-hidden
-      loading="lazy"
-      referrerPolicy="no-referrer"
-      className="size-9 shrink-0 rounded-md border border-border bg-card object-contain p-1"
-    />
+      className="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted font-mono text-sm font-medium text-muted-foreground"
+    >
+      {!loaded && (
+        <span className="absolute inset-0 flex items-center justify-center">
+          {name.charAt(0).toUpperCase()}
+        </span>
+      )}
+      {src && (
+        // eslint-disable-next-line @next/next/no-img-element -- tiny external favicon, no optimization pipeline wanted
+        <img
+          key={src}
+          src={src}
+          alt=""
+          aria-hidden
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          onLoad={() => {
+            resolvedCache.set(hostname, src);
+            setLoaded(true);
+          }}
+          onError={() => {
+            setLoaded(false);
+            setStep((current) => current + 1);
+          }}
+          className={cn(
+            "absolute inset-0 size-full bg-card object-contain p-1 transition-opacity duration-150",
+            loaded ? "opacity-100" : "opacity-0"
+          )}
+        />
+      )}
+    </span>
   );
 }

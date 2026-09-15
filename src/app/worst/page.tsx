@@ -5,15 +5,17 @@ import { getServicesHealth } from "@/features/services-monitor/server/health-pro
 import { STATUS_META } from "@/features/services-monitor/components/status-meta";
 import type { ServiceHealth } from "@/features/services-monitor/types";
 import { STATUS_PAGES_ENABLED } from "@/lib/site";
+import { pageMetadata } from "@/lib/seo";
 import { cn, formatLatency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Most & least reliable portals",
   description:
     "Which Nepali government portals are the most and least reliable, ranked by uptime over the last 24 hours.",
-};
+  path: "/worst",
+});
 
 function downHours(service: ServiceHealth): number {
   let hours = 0;

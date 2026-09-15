@@ -1,13 +1,15 @@
 import { ImageResponse } from "next/og";
 
 import seedData from "@/data/seed-services.json";
-import { SITE_URL } from "@/lib/site";
+import { SITE_URL, STATUS_PAGES_ENABLED } from "@/lib/site";
 
 export const alt = "IsGovOnline — live government portal status";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export function generateStaticParams() {
+  // Don't prebuild 145 per-service cards while the status pages are disabled.
+  if (!STATUS_PAGES_ENABLED) return [];
   return seedData.map((service) => ({ serviceId: service.id }));
 }
 

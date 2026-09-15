@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { Activity, Database, ShieldCheck } from "lucide-react";
 
-export const metadata: Metadata = {
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = pageMetadata({
   title: "Methodology",
   description:
     "How IsGovOnline measures uptime for Nepal's government portals, and what the statuses mean.",
-};
+  path: "/methodology",
+});
 
 const SECTION_ICON = "size-4 shrink-0 text-muted-foreground";
 

@@ -19,6 +19,7 @@ interface ServiceCardProps {
 
 export function ServiceCard({ service }: ServiceCardProps) {
   const meta = STATUS_META[service.status];
+  const StatusIcon = meta.icon;
   const setSelectedServiceId = useDetailStore((s) => s.setSelectedServiceId);
 
   const select = () => setSelectedServiceId(service.id);
@@ -48,8 +49,8 @@ export function ServiceCard({ service }: ServiceCardProps) {
             </h3>
             <div className="flex items-center gap-2">
               <Badge variant={meta.badge}>
-                <span
-                  className={cn("size-1.5 rounded-full", meta.dot)}
+                <StatusIcon
+                  className={cn("size-3", meta.text)}
                   aria-hidden
                 />
                 {meta.label}

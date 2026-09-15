@@ -1,3 +1,5 @@
+import { CircleCheck, CircleX, TriangleAlert, type LucideIcon } from "lucide-react";
+
 import type { HealthStatus } from "@/features/services-monitor/types";
 
 interface StatusMeta {
@@ -7,6 +9,8 @@ interface StatusMeta {
   bar: string;
   edge: string;
   order: number;
+  icon: LucideIcon;
+  text: string;
 }
 
 export const STATUS_META: Record<HealthStatus, StatusMeta> = {
@@ -17,6 +21,8 @@ export const STATUS_META: Record<HealthStatus, StatusMeta> = {
     bar: "bg-emerald-500",
     edge: "border-l-emerald-500",
     order: 2,
+    icon: CircleCheck,
+    text: "text-emerald-600 dark:text-emerald-400",
   },
   degraded: {
     label: "Degraded",
@@ -25,6 +31,8 @@ export const STATUS_META: Record<HealthStatus, StatusMeta> = {
     bar: "bg-amber-500",
     edge: "border-l-amber-500",
     order: 1,
+    icon: TriangleAlert,
+    text: "text-amber-600 dark:text-amber-400",
   },
   down: {
     label: "Down",
@@ -33,6 +41,8 @@ export const STATUS_META: Record<HealthStatus, StatusMeta> = {
     bar: "bg-rose-500",
     edge: "border-l-rose-500",
     order: 0,
+    icon: CircleX,
+    text: "text-rose-600 dark:text-rose-400",
   },
 };
 

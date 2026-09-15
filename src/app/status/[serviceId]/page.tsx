@@ -26,7 +26,9 @@ const seeds = seedServiceSchema.array().parse(seedData);
 type Props = { params: Promise<{ serviceId: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  if (!STATUS_PAGES_ENABLED) return { title: "Not found" };
+  if (!STATUS_PAGES_ENABLED) {
+    return { title: "Not found", robots: { index: false, follow: false } };
+  }
 
   const { serviceId } = await params;
   const service = seeds.find((s) => s.id === serviceId);

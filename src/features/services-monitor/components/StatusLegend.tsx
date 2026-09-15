@@ -38,10 +38,11 @@ export function StatusLegend() {
       <div className="space-y-3 border-t border-border px-4 py-4">
         {rows.map(({ status, desc }) => {
           const meta = STATUS_META[status];
+          const Icon = meta.icon;
           return (
             <div key={status} className="flex items-start gap-3">
-              <span
-                className={cn("mt-1.5 size-2 shrink-0 rounded-full", meta.dot)}
+              <Icon
+                className={cn("mt-0.5 size-4 shrink-0", meta.text)}
                 aria-hidden
               />
               <div className="min-w-0">

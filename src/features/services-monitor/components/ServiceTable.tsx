@@ -80,6 +80,7 @@ export function ServiceTable() {
         <tbody className="divide-y divide-border">
           {services.map((service) => {
             const meta = STATUS_META[service.status];
+            const StatusIcon = meta.icon;
             return (
               <tr
                 key={service.id}
@@ -116,8 +117,8 @@ export function ServiceTable() {
                 </td>
                 <td className="px-4 py-3">
                   <Badge variant={meta.badge}>
-                    <span
-                      className={cn("size-1.5 rounded-full", meta.dot)}
+                    <StatusIcon
+                      className={cn("size-3", meta.text)}
                       aria-hidden
                     />
                     {meta.label}

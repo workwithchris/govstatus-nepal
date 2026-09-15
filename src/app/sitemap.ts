@@ -5,6 +5,7 @@ import seedData from "@/data/seed-services.json";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
+
   const servicePages: MetadataRoute.Sitemap = STATUS_PAGES_ENABLED
     ? seedData.map((service) => ({
         url: `${SITE_URL}/status/${service.id}`,
@@ -14,6 +15,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
       }))
     : [];
 
+  const categories = [...new Set(seedData.map((service) => service.category))];
+  const categoryPages: MetadataRoute.Sitemap = categories.map((category) => ({
+    url: `${SITE_URL}/category/${category}`,
+    lastModified: now,
+    changeFrequency: "hourly",
+    priority: 0.7,
+  }));
+
   return [
     {
       url: SITE_URL,
@@ -22,8 +31,27 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     ...servicePages,
+    ...categoryPages,
+    {
+      url: `${SITE_URL}/worst`,
+      lastModified: now,
+      changeFrequency: "hourly",
+      priority: 0.6,
+    },
+    {
+      url: `${SITE_URL}/compare`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.5,
+    },
     {
       url: `${SITE_URL}/about`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
+      url: `${SITE_URL}/methodology`,
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.5,

@@ -13,6 +13,7 @@ import {
   serviceCategorySchema,
 } from "@/features/services-monitor/types";
 import { STATUS_PAGES_ENABLED } from "@/lib/site";
+import { pageMetadata } from "@/lib/seo";
 import { cn, formatLatency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -33,10 +34,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const category = serviceCategorySchema.safeParse(slug).data;
   if (!category) return { title: "Category not found" };
   const label = CATEGORY_LABELS[category] ?? category;
-  return {
+  return pageMetadata({
     title: `${label} portals — live status`,
     description: `Live uptime and health status for Nepal's ${label.toLowerCase()} government portals and digital public services, checked every 5 minutes from Nepal.`,
-  };
+    path: `/category/${category}`,
+  });
 }
 
 export default async function CategoryPage({ params }: Props) {

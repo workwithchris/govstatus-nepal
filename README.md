@@ -75,7 +75,9 @@ persists status history in Cloudflare D1.
   `GovernmentService` JSON-LD, per-service OG image) are built but
   **currently disabled** (see **Feature flags**): the route 404s, links are
   hidden, and the pages are dropped from the sitemap/RSS/llms.txt
-- **Caching & fast fetch** — the snapshot is CDN-cached (`s-maxage=60,
+- **Caching & fast fetch** — the snapshot is cached in each visitor's browser
+  for 5 min (`max-age=300`, so soft reloads/navigations don't refetch; a hard
+  reload bypasses it) and at the edge (`s-maxage=60,
   stale-while-revalidate=300`); the dashboard fetches a slim
   `/api/health?slim=1` payload (no 24h arrays), while Compare/Analytics use the
   full `/api/health`. The Worker is serve-only and never probes

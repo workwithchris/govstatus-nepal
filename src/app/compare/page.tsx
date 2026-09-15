@@ -1,10 +1,12 @@
 import { CompareView } from "@/features/services-monitor/components/CompareView";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title: "Compare portals",
   description:
     "Compare the live status and uptime history of up to three Nepal government portals side by side.",
-};
+  path: "/compare",
+});
 
 export default async function ComparePage({
   searchParams,

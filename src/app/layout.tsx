@@ -88,6 +88,8 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-background">
+        <link rel="preconnect" href="https://www.google.com" />
+        <link rel="preconnect" href="https://icons.duckduckgo.com" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}

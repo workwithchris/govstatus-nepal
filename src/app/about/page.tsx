@@ -2,12 +2,15 @@ import type { Metadata } from "next";
 import { Activity, Eye, MapPin, ShieldCheck } from "lucide-react";
 
 import { STATUS_META } from "@/features/services-monitor/components/status-meta";
+import seedData from "@/data/seed-services.json";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "About",
   description:
     "IsGovOnline exists — an independent uptime tracker for Nepal's digital public services, and how it works.",
-};
+  path: "/about",
+});
 
 const SECTION_ICON = "size-4 shrink-0 text-muted-foreground";
 
@@ -59,13 +62,18 @@ export default function AboutPage() {
           </h2>
           <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
             <p>
-              Every 5 minutes, from a Nepal vantage point, we check 145
-              government portals and public services — ministries, citizen
-              services, banks, universities, municipalities, provinces — and
-              record whether each one is operational, degraded, or down. The
-              history accumulates into hourly and daily records, so you can see
-              not just what&apos;s down right now, but which services are
-              reliably up over weeks and months.
+              Every 5 minutes, from a Nepal vantage point, we check{" "}
+              {seedData.length} government portals and public services —
+              ministries, citizen services, banks, universities,
+              municipalities, provinces — and record whether each one is
+              operational, degraded, or down. The dashboard fetches the latest
+              reading live in your browser, so every visit shows the current
+              status, latency, and HTTP response for each service.
+            </p>
+            <p>
+              Those readings accumulate into hourly and daily records, which
+              power the reliability ranking and the side-by-side comparison of
+              how services hold up over time.
             </p>
             <p>
               It&apos;s an independent tracker. We&apos;re not affiliated with

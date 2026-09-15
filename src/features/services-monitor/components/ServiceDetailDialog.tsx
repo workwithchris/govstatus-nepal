@@ -61,6 +61,7 @@ export function ServiceDetailDialog() {
   const { data } = useServicesHealth();
 
   const service = data?.services.find((s) => s.id === selectedServiceId) ?? null;
+  const meta = service ? STATUS_META[service.status] : null;
 
   return (
     <Dialog
@@ -68,10 +69,14 @@ export function ServiceDetailDialog() {
       onOpenChange={(open) => !open && setSelectedServiceId(null)}
     >
       <DialogContent>
-        {service && (
+        {service && meta && (
           <div className="space-y-5">
             <div className="flex items-start gap-3 pr-8">
-              <ServiceLogo url={service.url} name={service.name} />
+              <ServiceLogo
+                key={service.id}
+                url={service.url}
+                name={service.name}
+              />
               <div className="min-w-0 space-y-1">
                 <DialogTitle>{service.name}</DialogTitle>
                 <DialogDescription className="line-clamp-2">
@@ -81,15 +86,9 @@ export function ServiceDetailDialog() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Badge variant={STATUS_META[service.status].badge}>
-                <span
-                  className={cn(
-                    "size-1.5 rounded-full",
-                    STATUS_META[service.status].dot
-                  )}
-                  aria-hidden
-                />
-                {STATUS_META[service.status].label}
+              <Badge variant={meta.badge}>
+                <meta.icon className={cn("size-3", meta.text)} aria-hidden />
+                {meta.label}
               </Badge>
               <span className="font-mono text-xs text-muted-foreground">
                 http {service.httpStatus ?? "—"} · {formatLatency(service.responseTime)}

@@ -6,6 +6,13 @@ import { SITE_URL } from "@/lib/site";
 export const dynamic = "force-dynamic";
 export const revalidate = 60;
 
+// Embeddable widget only — never index it (it's a fragment meant to be
+// iframed into third-party pages, and would otherwise duplicate the dashboard).
+export const metadata = {
+  title: "Status widget",
+  robots: { index: false, follow: false },
+};
+
 // Embeddable single-service widget (no JS). Copy the iframe snippet from the
 // detail dialog. Rendered server-side so it works inside any third-party page.
 export default async function EmbedPage({
