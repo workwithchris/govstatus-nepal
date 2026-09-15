@@ -13,6 +13,12 @@ import { SimulatedDataNotice } from "@/features/services-monitor/components/Simu
 import { StatusLegend } from "@/features/services-monitor/components/StatusLegend";
 import { useLang } from "@/lib/i18n";
 
+// Temporarily hidden tabs. Flip to true to bring the tab back (the view
+// components are still imported and ready). Typed as `boolean` so the
+// disabled branches stay type-checked.
+const ANALYTICS_TAB_ENABLED: boolean = false;
+const INCIDENTS_TAB_ENABLED: boolean = false;
+
 export function HomeTabs() {
   const { t } = useLang();
   return (
@@ -22,14 +28,18 @@ export function HomeTabs() {
           <LayoutDashboard className="size-4" />
           {t("tab.dashboard")}
         </TabsTrigger>
-        <TabsTrigger value="analytics">
-          <ChartColumnBig className="size-4" />
-          {t("tab.analytics")}
-        </TabsTrigger>
-        <TabsTrigger value="incidents">
-          <ScrollText className="size-4" />
-          {t("tab.incidents")}
-        </TabsTrigger>
+        {ANALYTICS_TAB_ENABLED && (
+          <TabsTrigger value="analytics">
+            <ChartColumnBig className="size-4" />
+            {t("tab.analytics")}
+          </TabsTrigger>
+        )}
+        {INCIDENTS_TAB_ENABLED && (
+          <TabsTrigger value="incidents">
+            <ScrollText className="size-4" />
+            {t("tab.incidents")}
+          </TabsTrigger>
+        )}
       </TabsList>
 
       <TabsContent value="dashboard" className="space-y-10">
@@ -43,13 +53,17 @@ export function HomeTabs() {
         <ServicesView />
       </TabsContent>
 
-      <TabsContent value="analytics">
-        <AnalyticsView />
-      </TabsContent>
+      {ANALYTICS_TAB_ENABLED && (
+        <TabsContent value="analytics">
+          <AnalyticsView />
+        </TabsContent>
+      )}
 
-      <TabsContent value="incidents">
-        <IncidentsView />
-      </TabsContent>
+      {INCIDENTS_TAB_ENABLED && (
+        <TabsContent value="incidents">
+          <IncidentsView />
+        </TabsContent>
+      )}
     </Tabs>
   );
 }

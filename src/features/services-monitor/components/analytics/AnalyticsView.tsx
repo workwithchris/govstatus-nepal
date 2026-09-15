@@ -8,7 +8,7 @@ import {
   LatencyTrendChart,
   SlowestServices,
 } from "@/features/services-monitor/components/analytics/charts";
-import { useServicesHealth } from "@/features/services-monitor/api/useServicesHealth";
+import { useServicesFullHealth } from "@/features/services-monitor/api/useServicesHealth";
 
 function ChartCard({
   title,
@@ -33,7 +33,7 @@ function ChartCard({
 }
 
 export function AnalyticsView() {
-  const { data, isLoading } = useServicesHealth();
+  const { data, isLoading } = useServicesFullHealth();
   const services = data?.services ?? [];
 
   if (isLoading || services.length === 0) {

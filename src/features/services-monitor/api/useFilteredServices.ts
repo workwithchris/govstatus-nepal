@@ -5,14 +5,14 @@ import { useMemo } from "react";
 import { STATUS_META } from "@/features/services-monitor/components/status-meta";
 import { useFilterStore } from "@/features/services-monitor/store/useFilterStore";
 import { useServicesHealth } from "@/features/services-monitor/api/useServicesHealth";
-import type { ServiceHealth } from "@/features/services-monitor/types";
+import type { SlimServiceHealth } from "@/features/services-monitor/types";
 
 /**
  * Applies the filter store (search, category, sort) to the health query data.
  * Shared by the card grid and the table view.
  */
 export function useFilteredServices(): {
-  services: ServiceHealth[];
+  services: SlimServiceHealth[];
   isLoading: boolean;
 } {
   const { data, isLoading } = useServicesHealth();

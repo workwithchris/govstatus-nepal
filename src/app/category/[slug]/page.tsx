@@ -12,6 +12,7 @@ import {
   seedServiceSchema,
   serviceCategorySchema,
 } from "@/features/services-monitor/types";
+import { STATUS_PAGES_ENABLED } from "@/lib/site";
 import { cn, formatLatency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -85,31 +86,45 @@ export default async function CategoryPage({ params }: Props) {
         <ul className="space-y-2">
           {members.map((service) => {
             const meta = STATUS_META[service.status];
+            const rowClass =
+              "flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3";
+            const content = (
+              <>
+                <span
+                  className={cn("size-2 shrink-0 rounded-full", meta.dot)}
+                  aria-hidden
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-foreground">
+                    {service.name}
+                  </span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {service.description}
+                  </span>
+                </span>
+                <span className="hidden shrink-0 font-mono text-xs text-muted-foreground sm:inline">
+                  {formatLatency(service.responseTime)}
+                </span>
+                <span className="w-16 shrink-0 text-right font-mono text-xs font-semibold text-muted-foreground">
+                  {service.uptimePercentage.toFixed(1)}%
+                </span>
+              </>
+            );
             return (
               <li key={service.id}>
-                <Link
-                  href={`/status/${service.id}`}
-                  className="group flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:bg-accent/40"
-                >
-                  <span
-                    className={cn("size-2 shrink-0 rounded-full", meta.dot)}
-                    aria-hidden
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-foreground">
-                      {service.name}
-                    </span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {service.description}
-                    </span>
-                  </span>
-                  <span className="hidden shrink-0 font-mono text-xs text-muted-foreground sm:inline">
-                    {formatLatency(service.responseTime)}
-                  </span>
-                  <span className="w-16 shrink-0 text-right font-mono text-xs font-semibold text-muted-foreground">
-                    {service.uptimePercentage.toFixed(1)}%
-                  </span>
-                </Link>
+                {STATUS_PAGES_ENABLED ? (
+                  <Link
+                    href={`/status/${service.id}`}
+                    className={cn(
+                      rowClass,
+                      "group transition-colors hover:bg-accent/40"
+                    )}
+                  >
+                    {content}
+                  </Link>
+                ) : (
+                  <div className={rowClass}>{content}</div>
+                )}
               </li>
             );
           })}

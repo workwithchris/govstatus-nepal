@@ -1,4 +1,4 @@
-import { SITE_URL } from "@/lib/site";
+import { SITE_URL, STATUS_PAGES_ENABLED } from "@/lib/site";
 import seedData from "@/data/seed-services.json";
 
 export const revalidate = 3600;
@@ -6,11 +6,16 @@ export const revalidate = 3600;
 /** llms.txt — machine/AI-crawler manifest (llmstxt.org format). */
 export function GET() {
   const serviceLines = seedData
-    .map(
-      (s) =>
-        `- [${s.name}](${SITE_URL}/status/${s.id}): ${s.description}`
+    .map((s) =>
+      STATUS_PAGES_ENABLED
+        ? `- [${s.name}](${SITE_URL}/status/${s.id}): ${s.description}`
+        : `- ${s.name}: ${s.description}`
     )
     .join("\n");
+
+  const servicePageFact = STATUS_PAGES_ENABLED
+    ? "- Each service has a dedicated status page with current status, 24-hour uptime, latency, and HTTP code."
+    : "- Each service's current status, latency, and HTTP code are shown on the live dashboard.";
 
   const body = `# IsGovOnline
 
@@ -21,9 +26,9 @@ export function GET() {
 - Independent, non-governmental uptime tracker for Nepal's digital public services.
 - Monitors ${seedData.length}+ portals: passports, tax, NEPSE, NRB, land records, ministries, palikas, and more.
 - Status measured from Nepal: "down" means unreachable from a Nepal vantage point, not from a foreign datacenter.
-- Each service has a dedicated status page with current status, 24-hour uptime, latency, and HTTP code.
+${servicePageFact}
 - Hourly history is persisted and rolled up into 30/90-day uptime; a "down" reading is confirmed twice before being reported.
-- Status is refreshed every 5 minutes; pages are server-rendered and revalidated every 60 seconds.
+- Status is fetched live in each visitor's browser; the underlying probe runs every 5 minutes from Nepal.
 
 ## Services monitored
 

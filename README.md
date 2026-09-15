@@ -3,8 +3,9 @@
 Real-time uptime monitor, health checker, and reliability tracker for Nepal's
 government portals and digital public services.
 
-Live probe results are embedded server-side, refreshed every 5 minutes, and
-backed by a persisted status history in Cloudflare D1.
+The dashboard fetches the latest probe snapshot live in each visitor's browser;
+the underlying probe runs every 5 minutes from a Nepal vantage point and
+persists status history in Cloudflare D1.
 
 ![Tech](https://img.shields.io/badge/Next.js%2016-App%20Router-black)
 ![Tech](https://img.shields.io/badge/TypeScript-strict-blue)
@@ -32,13 +33,16 @@ backed by a persisted status history in Cloudflare D1.
 - **TLS-relaxed retry** — Node/undici rejects incomplete certificate chains
   that browsers tolerate; probes retry once with relaxed TLS so certificate
   quirks don't read as outages
-- **24-hour uptime bars** — hourly history per service, aggregated per hour
+- **24-hour uptime history** — hourly history per service, aggregated per hour
   from every probe sample and persisted to Cloudflare D1 (**90-day retention**).
   An hour counts as `down` if any sample in that hour was down, so a
-  one-minute blip isn't hidden by a good final check
+  one-minute blip isn't hidden by a good final check. The 24h bars/labels are
+  currently hidden across the dashboard (see **Feature flags**) but the data is
+  still recorded and served
 - **Long-term uptime** — 30/90-day per-service uptime % and daily bars via
   `/api/health/history?service=<id>&days=30` (rolled up from the hourly
-  buckets); surfaced in the service detail dialog
+  buckets); surfaced on the Compare page (the service detail dialog now shows
+  only the live snapshot)
 - **TLS cert tracking** — cert expiry is captured via a lightweight TLS
   handshake (re-checked every 6h, Node only) and surfaced per service
 - **Status-change alerts** — when a service transitions to/from down or
@@ -51,8 +55,8 @@ backed by a persisted status history in Cloudflare D1.
   (domain onboarded to Cloudflare Email Sending). Until then the subscribe UI
   is hidden and the API refuses writes.
 - **Incident log** — `/api/incidents` (JSON), `/feed.xml` (RSS 2.0), and an
-  Incidents tab: contiguous non-operational runs per service over the last
-  7 days, ongoing vs resolved
+  Incidents tab (**currently hidden**, see **Feature flags**): contiguous
+  non-operational runs per service over the last 7 days, ongoing vs resolved
 - **Provenance + freshness banner** — the dashboard always says how the data
   was gathered (Nepal vantage) and how stale it is; a stale snapshot or
   simulated fallback is flagged, never presented as live
@@ -65,14 +69,16 @@ backed by a persisted status history in Cloudflare D1.
 - **Dashboard** — metric cards, instant search, category tabs with counts,
   sort by status/name/latency, card grid + sortable table view, dark/light
   mode
-- **SEO & AI crawlability** — every monitored service has a dedicated
-  server-rendered status page (`/status/<id>`, "Is … down?" metadata,
-  `GovernmentService` JSON-LD, per-service OG image), a 171-URL sitemap, an
-  `llms.txt` manifest for AI engines (ChatGPT/Perplexity/Gemini), keyword-rich
-  homepage content, and incident RSS items linking to the affected service's
-  status page
-- **Caching** — ISR (`revalidate = 60`) plus `s-maxage=60,
-  stale-while-revalidate=30`; the Worker is serve-only and never probes
+- **SEO & AI crawlability** — a sitemap, an `llms.txt` manifest for AI engines
+  (ChatGPT/Perplexity/Gemini), keyword-rich homepage content, and incident RSS
+  items. Per-service status pages (`/status/<id>`, "Is … down?" metadata,
+  `GovernmentService` JSON-LD, per-service OG image) are built but
+  **currently disabled** (see **Feature flags**): the route 404s, links are
+  hidden, and the pages are dropped from the sitemap/RSS/llms.txt
+- **Caching & fast fetch** — the snapshot is CDN-cached (`s-maxage=60,
+  stale-while-revalidate=300`); the dashboard fetches a slim
+  `/api/health?slim=1` payload (no 24h arrays), while Compare/Analytics use the
+  full `/api/health`. The Worker is serve-only and never probes
 - **Honest fallback** — when D1 is unconfigured/unreachable the API reports
   `source: "simulated"` and the dashboard shows a banner, so fabricated
   history is never mistaken for real uptime
@@ -283,6 +289,22 @@ Check the Worker secrets and `/api/diag`'s `databaseId` field.
   older timestamp — never fabricated). The cron script persists this state
   in `probe/cadence-state.json` (gitignored) so it survives process
   restarts; the app's `/api/probe` path keeps the same state in memory.
+
+## Feature flags (currently hidden)
+
+Temporary switches. Flip the flag to `true` to bring the feature back — the
+view components and data pipelines are untouched.
+
+| Flag | File | When `false` |
+|---|---|---|
+| `STATUS_PAGES_ENABLED` | [`src/lib/site.ts`](src/lib/site.ts) | `/status/<id>` returns 404; links hidden in the dashboard, category, ranking, compare, and detail-modal views; pages dropped from the sitemap, RSS (`/feed.xml`), and `llms.txt` |
+| `ANALYTICS_TAB_ENABLED` | [`HomeTabs.tsx`](src/features/services-monitor/components/HomeTabs.tsx) | Analytics tab hidden |
+| `INCIDENTS_TAB_ENABLED` | [`HomeTabs.tsx`](src/features/services-monitor/components/HomeTabs.tsx) | Incidents tab hidden |
+
+Also currently hidden in the UI (no flag — edit the components to restore):
+the 24h uptime bar/percentage in the home table and service cards, and the
+history sections (24h stats, long-range stats, hourly timeline) of the service
+detail dialog, which now shows only the snapshot the client fetched live.
 
 ## License
 

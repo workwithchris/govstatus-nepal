@@ -18,6 +18,11 @@ not just a live snapshot.
 
 Live URL: `https://isgovonline.techyatraa.com`
 
+> **Currently hidden** (temporary, flag-gated — see README "Feature flags"):
+> the per-service status pages, the Analytics/Incidents tabs, the 24h uptime
+> bars in the home table/cards, and the history sections of the service detail
+> dialog. The data pipelines behind all of them remain intact.
+
 ### Core principle — vantage point honesty
 
 Status is measured **from a probe running on a Nepal IP**. Foreign/datacenter
@@ -66,6 +71,7 @@ govstatus/
 │   │   ├── page.tsx                 # Dashboard (static shell, client-fetched data)
 │   │   ├── loading.tsx              # Full-page ProbeLoader
 │   │   ├── about/page.tsx           # Static "Why this exists" page
+│   │   ├── status/[serviceId]/page.tsx  # Per-service status page (404 unless STATUS_PAGES_ENABLED)
 │   │   ├── providers.tsx            # React Query + Theme + Lang providers
 │   │   ├── robots.ts / sitemap.ts   # SEO
 │   │   ├── feed.xml/route.ts        # RSS 2.0 incident feed
@@ -270,7 +276,8 @@ returns 403 there; probing is owned solely by `probe/nepal-probe.mjs`.
 
 | Route | Method | Purpose | Caching |
 |---|---|---|---|
-| `/api/health` | GET | Served health snapshot (never probes) | `revalidate=60` + `s-maxage=60, stale-while-revalidate=30` |
+| `/api/health` | GET | Full served health snapshot (never probes) | `revalidate=60` + `s-maxage=60, stale-while-revalidate=300` |
+| `/api/health?slim=1` | GET | Dashboard snapshot without the 24h `history`/`latencies` arrays | same as above |
 | `/api/health/history?service=&days=` | GET | Daily uptime (30/90d) rolled from hourly buckets | `s-maxage=300, stale-while-revalidate=300` |
 | `/api/health/progress` | GET | Live probe progress (loader); serve-only returns `done` immediately | uncached |
 | `/api/probe` | POST | Cron probe trigger. Serve-only → 403. Auth `Bearer CRON_SECRET` or `x-cron-secret` | — |
@@ -301,24 +308,28 @@ emerald (operational), amber (degraded), rose (down).
 ### Dashboard (`app/page.tsx` + `HomeTabs`)
 
 Fully **static shell** (rendered instantly from CDN edge); all live data is
-fetched client-side by React Query. Three tabs:
+fetched client-side by React Query, so each visitor sees the latest snapshot in
+their own browser. Three tabs, two currently hidden behind
+`ANALYTICS_TAB_ENABLED` / `INCIDENTS_TAB_ENABLED` in `HomeTabs.tsx`:
 
 1. **Dashboard** — `SimulatedDataNotice` (banner when `source=simulated`),
    `MetricsOverview` (3 stat cards: total monitored, system status, avg response),
    `SearchAndSortBar`, `CategoryFilters` (9 categories with counts), `StatusLegend`,
-   `ServicesView` (grid OR sortable table, toggleable).
-2. **Analytics** — Recharts: category uptime, latency trend, incident chart,
-   slowest services.
-3. **Incidents** — derived incident list with ongoing/resolved badges.
+   `ServicesView` (grid OR sortable table, toggleable). The 24h uptime
+   bar/percentage is currently hidden in both the table and the cards.
+2. **Analytics** (hidden) — Recharts: category uptime, latency trend, incident
+   chart, slowest services.
+3. **Incidents** (hidden) — derived incident list with ongoing/resolved badges.
 
 ### Client state & data flow
 
 - `useFilterStore` (Zustand): `searchQuery`, `selectedCategory`, `sortBy`,
   `view` (grid/table). `useFilteredServices` memoizes filtering/sorting.
 - `useDetailStore`: which service is open in the detail dialog.
-- `useServicesHealth`: `/api/health`, staleTime + refetchInterval **60s** (README
-  says 60, code says 5min stale/refetch — the query client default is 60s stale,
-  the health hook uses 5min; trust the code).
+- `useServicesHealth`: `/api/health?slim=1` (no 24h arrays), staleTime +
+  refetchInterval **5 min**, no refetch-on-window-focus — dashboard data.
+- `useServicesFullHealth`: `/api/health` (full payload) — used by Compare and
+  Analytics, which still read the 24h `history`/`latencies`.
 - `useServiceHistory` / `useIncidents`: same pattern.
 - `Providers`: React Query + `next-themes` (dark/light/system) + `LangProvider`.
 - **i18n** (`lib/i18n.tsx`): `en` / `ne` (नेपाली) switch for main chrome,
@@ -326,10 +337,11 @@ fetched client-side by React Query. Three tabs:
 
 ### Service detail dialog
 
-Opened from a card/row. Shows status, uptime %, 24h `UptimeBar` (hover tooltips),
-30/90d daily history chart (via `useServiceHistory`), response time, HTTP
-status, TLS cert days-left, and an **embed iframe snippet** to copy
-(`/embed/<id>`).
+Opened from a card/row. Shows the live snapshot fetched by the client — status,
+response time, HTTP status, last-checked time, and TLS cert days-left — plus an
+**embed iframe snippet** to copy (`/embed/<id>`). The 24h `UptimeBar`, 30/90d
+history chart/stats, hourly timeline, and "Status page" link are currently
+hidden (the route itself is gated by `STATUS_PAGES_ENABLED`).
 
 ### `ProbeLoader` / `app/loading.tsx`
 
@@ -364,6 +376,11 @@ progress endpoint reports `done` immediately so it never hammers.
 | `PROBE_TIMEOUT_MS` | Probe abort timeout (min 1000) | 45000 |
 | `SERVE_ONLY` | Force serve-only on Node too | auto on workerd |
 | `WORKER_SELF_REFERENCE.service` / Worker `name` | Must be equal or deploy fails (10143) | `govstatus-nepal` |
+
+**Code-level flags** (not env): `STATUS_PAGES_ENABLED` in `src/lib/site.ts`
+gates `/status/<id>` and every link/listing to it; `ANALYTICS_TAB_ENABLED` /
+`INCIDENTS_TAB_ENABLED` in `HomeTabs.tsx` gate those tabs. All default to
+`false` (hidden) as of this writing.
 
 **D1 availability is two separate mechanisms** (`lib/d1.ts`):
 1. **Native binding** — `globalThis.DB` (workerd), OpenNext

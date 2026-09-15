@@ -7,7 +7,9 @@ export { HomeTabs } from "@/features/services-monitor/components/HomeTabs";
 export { ProbeLoader } from "@/features/services-monitor/components/ProbeLoader";
 export {
   useServicesHealth,
+  useServicesFullHealth,
   SERVICES_HEALTH_QUERY_KEY,
+  SERVICES_FULL_HEALTH_QUERY_KEY,
 } from "@/features/services-monitor/api/useServicesHealth";
 export { getServicesHealth } from "@/features/services-monitor/server/health-probe";
 export { useFilterStore } from "@/features/services-monitor/store/useFilterStore";

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { decodeHistory } from "@/lib/utils";
+import { STATUS_PAGES_ENABLED } from "@/lib/site";
 import seedData from "@/data/seed-services.json";
 import { seedServiceSchema } from "@/features/services-monitor/types";
 import { getServicesHealth } from "@/features/services-monitor/server/health-probe";
@@ -25,6 +26,8 @@ const seeds = seedServiceSchema.array().parse(seedData);
 type Props = { params: Promise<{ serviceId: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  if (!STATUS_PAGES_ENABLED) return { title: "Not found" };
+
   const { serviceId } = await params;
   const service = seeds.find((s) => s.id === serviceId);
 
@@ -37,6 +40,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ServiceStatusPage({ params }: Props) {
+  if (!STATUS_PAGES_ENABLED) notFound();
+
   const { serviceId } = await params;
   const { services } = await getServicesHealth();
   const service = services.find((s) => s.id === serviceId);

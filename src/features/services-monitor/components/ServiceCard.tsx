@@ -4,18 +4,17 @@ import { ExternalLink } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { UptimeBar } from "@/features/services-monitor/components/UptimeBar";
 import {
   CATEGORY_LABELS,
   STATUS_META,
 } from "@/features/services-monitor/components/status-meta";
 import { ServiceLogo } from "@/features/services-monitor/components/ServiceLogo";
 import { useDetailStore } from "@/features/services-monitor/store/useDetailStore";
-import type { ServiceHealth } from "@/features/services-monitor/types";
+import type { SlimServiceHealth } from "@/features/services-monitor/types";
 import { cn, formatLatency } from "@/lib/utils";
 
 interface ServiceCardProps {
-  service: ServiceHealth;
+  service: SlimServiceHealth;
 }
 
 export function ServiceCard({ service }: ServiceCardProps) {
@@ -81,14 +80,8 @@ export function ServiceCard({ service }: ServiceCardProps) {
           </Badge>
           <p className="font-mono text-[10px] text-muted-foreground sm:text-[11px]">
             {formatLatency(service.responseTime)}
-            <span className="mx-1.5">·</span>
-            {service.uptimePercentage.toFixed(1)}% uptime
           </p>
         </div>
-        <UptimeBar
-          service={service}
-          className="h-4 sm:h-5"
-        />
       </div>
     </Card>
   );

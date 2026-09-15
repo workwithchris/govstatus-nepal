@@ -1,5 +1,5 @@
 import { getIncidents } from "@/features/services-monitor/server/incidents";
-import { SITE_URL } from "@/lib/site";
+import { SITE_URL, STATUS_PAGES_ENABLED } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -25,9 +25,12 @@ export async function GET() {
         incident.ongoing ? incident.startedAt : (incident.endedAt as string)
       ).toUTCString();
       const status = incident.ongoing ? "ongoing" : "resolved";
+      const link = STATUS_PAGES_ENABLED
+        ? `${SITE_URL}/status/${incident.serviceId}`
+        : SITE_URL;
       return `    <item>
       <title>${escapeXml(title)}</title>
-<link>${SITE_URL}/status/${incident.serviceId}</link>
+<link>${link}</link>
       <guid isPermaLink="false">${escapeXml(incident.id)}</guid>
       <pubDate>${pubDate}</pubDate>
       <description>${escapeXml(

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getServicesHealth } from "@/features/services-monitor/server/health-probe";
 import { STATUS_META } from "@/features/services-monitor/components/status-meta";
 import type { ServiceHealth } from "@/features/services-monitor/types";
+import { STATUS_PAGES_ENABLED } from "@/lib/site";
 import { cn, formatLatency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -53,12 +54,18 @@ function RankingList({
                   className={cn("size-2 shrink-0 rounded-full", meta.dot)}
                   aria-hidden
                 />
-                <Link
-                  href={`/status/${service.id}`}
-                  className="min-w-0 flex-1 truncate text-sm font-medium text-foreground hover:underline underline-offset-2"
-                >
-                  {service.name}
-                </Link>
+                {STATUS_PAGES_ENABLED ? (
+                  <Link
+                    href={`/status/${service.id}`}
+                    className="min-w-0 flex-1 truncate text-sm font-medium text-foreground hover:underline underline-offset-2"
+                  >
+                    {service.name}
+                  </Link>
+                ) : (
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                    {service.name}
+                  </span>
+                )}
                 <span className="hidden shrink-0 font-mono text-xs text-muted-foreground sm:inline">
                   {downHours(service)}h down · 24h
                 </span>
@@ -127,11 +134,11 @@ export default async function ReliabilityRankingPage() {
         <Link href="/methodology" className="text-primary underline underline-offset-2">
           methodology page
         </Link>
-        , or open any portal&apos;s{" "}
+        , or open the{" "}
         <Link href="/" className="text-primary underline underline-offset-2">
-          status page
+          dashboard
         </Link>{" "}
-        for its full history.
+        for the full live status.
       </p>
     </main>
   );

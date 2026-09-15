@@ -11,8 +11,9 @@ import { ProbeLoader } from "@/features/services-monitor/components/ProbeLoader"
 import { STATUS_META } from "@/features/services-monitor/components/status-meta";
 import { UptimeBar } from "@/features/services-monitor/components/UptimeBar";
 import { useServiceHistory } from "@/features/services-monitor/api/useServiceHistory";
-import { useServicesHealth } from "@/features/services-monitor/api/useServicesHealth";
+import { useServicesFullHealth } from "@/features/services-monitor/api/useServicesHealth";
 import type { ServiceHealth } from "@/features/services-monitor/types";
+import { STATUS_PAGES_ENABLED } from "@/lib/site";
 import { cn, formatLatency } from "@/lib/utils";
 
 const MAX_COMPARE = 3;
@@ -23,7 +24,7 @@ export function CompareView({
   initialServiceIds: string[];
 }) {
   const router = useRouter();
-  const { data, isLoading } = useServicesHealth();
+  const { data, isLoading } = useServicesFullHealth();
   const [selectedIds, setSelectedIds] = useState<string[]>(initialServiceIds);
 
   const selected = useMemo(() => {
@@ -141,9 +142,11 @@ function CompareRow({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/status/${service.id}`}>Details</Link>
-          </Button>
+          {STATUS_PAGES_ENABLED && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/status/${service.id}`}>Details</Link>
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"

@@ -98,6 +98,22 @@ export const healthResponseSchema = z.object({
 });
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 
+/**
+ * Slim variant served to the dashboard: same shape minus the compact 24h
+ * `history` + `latencies` arrays (those surfaces are hidden and only Compare /
+ * Analytics / embed need the full payload). Keeps the client payload small.
+ */
+export const slimServiceHealthSchema = serviceHealthSchema.omit({
+  history: true,
+  latencies: true,
+});
+export type SlimServiceHealth = z.infer<typeof slimServiceHealthSchema>;
+
+export const slimHealthResponseSchema = healthResponseSchema
+  .omit({ services: true })
+  .extend({ services: z.array(slimServiceHealthSchema) });
+export type SlimHealthResponse = z.infer<typeof slimHealthResponseSchema>;
+
 /* ------------------------------ Probe progress ----------------------------- */
 
 export const lastRunSchema = z.object({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ExternalLink } from "lucide-react";
 
 import {
@@ -15,37 +15,13 @@ import { ServiceLogo } from "@/features/services-monitor/components/ServiceLogo"
 import { STATUS_META } from "@/features/services-monitor/components/status-meta";
 import { useDetailStore } from "@/features/services-monitor/store/useDetailStore";
 import { useServicesHealth } from "@/features/services-monitor/api/useServicesHealth";
-import { useServiceHistory } from "@/features/services-monitor/api/useServiceHistory";
-import { SITE_URL } from "@/lib/site";
+import { SITE_URL, STATUS_PAGES_ENABLED } from "@/lib/site";
 import {
   certDaysLeft,
   cn,
-  decodeHistory,
-  formatHour,
   formatLatency,
   formatTimeAgo,
 } from "@/lib/utils";
-
-function StatBox({
-  label,
-  value,
-  valueClass,
-}: {
-  label: string;
-  value: string;
-  valueClass?: string;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-background p-3">
-      <p className="font-mono text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <p className={cn("mt-1 text-sm font-semibold text-foreground", valueClass)}>
-        {value}
-      </p>
-    </div>
-  );
-}
 
 function TlsCertLine({ certExpiresAt }: { certExpiresAt: string | null }) {
   if (!certExpiresAt) {
@@ -79,82 +55,12 @@ function TlsCertLine({ certExpiresAt }: { certExpiresAt: string | null }) {
   );
 }
 
-function LongUptimeBars({ history }: { history: NonNullable<ReturnType<typeof useServiceHistory>["data"]> }) {
-  return (
-    <div className="mt-3 flex items-end gap-[2px]">
-      {history.map((day) => {
-        const barClass =
-          day.status === "down"
-            ? "bg-rose-500"
-            : day.status === "degraded"
-              ? "bg-amber-500"
-              : "bg-emerald-500";
-        const height = Math.max(6, Math.round(day.uptime * 24));
-        return (
-          <div
-            key={day.day}
-            title={`${day.day} · ${(day.uptime * 100).toFixed(0)}% up`}
-            className={cn("w-1.5 shrink-0 rounded-[2px] opacity-80", barClass)}
-            style={{ height }}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
 export function ServiceDetailDialog() {
   const selectedServiceId = useDetailStore((s) => s.selectedServiceId);
   const setSelectedServiceId = useDetailStore((s) => s.setSelectedServiceId);
   const { data } = useServicesHealth();
-  const { data: longHistory } = useServiceHistory(selectedServiceId, 30);
 
   const service = data?.services.find((s) => s.id === selectedServiceId) ?? null;
-
-  const longStats = useMemo(() => {
-    if (!longHistory || longHistory.length === 0) return null;
-    const days = longHistory.length;
-    const downDays = longHistory.filter((d) => d.status === "down").length;
-    const degradedDays = longHistory.filter((d) => d.status === "degraded").length;
-    const weightedUptime =
-      longHistory.reduce((sum, d) => sum + d.uptime, 0) / days;
-    return {
-      days,
-      uptimePct: Math.round(weightedUptime * 1000) / 10,
-      downDays,
-      degradedDays,
-    };
-  }, [longHistory]);
-
-  const stats = useMemo(() => {
-    if (!service) return null;
-    const slots = [
-      ...decodeHistory(service.checkedAt, service.history, service.latencies),
-    ].reverse();
-    const lastUpSlot = slots.find((slot) => slot.status === "operational");
-    const known = slots.filter((slot) => slot.status !== null);
-    const latencies = known
-      .map((slot) => slot.responseTime)
-      .filter((time): time is number => time !== null);
-
-    return {
-      lastUp:
-        service.status === "operational"
-          ? "Up now (live)"
-          : lastUpSlot
-            ? `${formatHour(lastUpSlot.timestamp)} · ${formatTimeAgo(lastUpSlot.timestamp)}`
-            : "No data in window",
-      downCount: slots.filter((slot) => slot.status === "down").length,
-      degradedCount: slots.filter((slot) => slot.status === "degraded").length,
-      avgLatency:
-        latencies.length > 0
-          ? Math.round(
-              latencies.reduce((sum, time) => sum + time, 0) / latencies.length
-            )
-          : null,
-      timeline: slots,
-    };
-  }, [service]);
 
   return (
     <Dialog
@@ -162,7 +68,7 @@ export function ServiceDetailDialog() {
       onOpenChange={(open) => !open && setSelectedServiceId(null)}
     >
       <DialogContent>
-        {service && stats && (
+        {service && (
           <div className="space-y-5">
             <div className="flex items-start gap-3 pr-8">
               <ServiceLogo url={service.url} name={service.name} />
@@ -190,103 +96,6 @@ export function ServiceDetailDialog() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <StatBox label="Last up" value={stats.lastUp} />
-              <StatBox
-                label="Avg latency · 24h"
-                value={formatLatency(stats.avgLatency)}
-              />
-              <StatBox
-                label="Down · 24h"
-                value={`${stats.downCount} hour${stats.downCount === 1 ? "" : "s"}`}
-                valueClass={stats.downCount > 0 ? "text-rose-600 dark:text-rose-400" : undefined}
-              />
-              <StatBox
-                label="Degraded · 24h"
-                value={`${stats.degradedCount} hour${stats.degradedCount === 1 ? "" : "s"}`}
-                valueClass={
-                  stats.degradedCount > 0 ? "text-amber-600 dark:text-amber-400" : undefined
-                }
-              />
-            </div>
-
-            {longStats && (
-              <div>
-                <p className="mb-2 font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Last {longStats.days} days
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  <StatBox
-                    label="Uptime"
-                    value={`${longStats.uptimePct.toFixed(1)}%`}
-                    valueClass={
-                      longStats.uptimePct >= 99
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : longStats.uptimePct >= 95
-                          ? "text-amber-600 dark:text-amber-400"
-                          : "text-rose-600 dark:text-rose-400"
-                    }
-                  />
-                  <StatBox
-                    label="Days down"
-                    value={`${longStats.downDays}`}
-                    valueClass={
-                      longStats.downDays > 0 ? "text-rose-600 dark:text-rose-400" : undefined
-                    }
-                  />
-                  <StatBox
-                    label="Days degraded"
-                    value={`${longStats.degradedDays}`}
-                    valueClass={
-                      longStats.degradedDays > 0
-                        ? "text-amber-600 dark:text-amber-400"
-                        : undefined
-                    }
-                  />
-                </div>
-                <LongUptimeBars history={longHistory ?? []} />
-              </div>
-            )}
-
-            <div>
-              <p className="mb-2 font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Hourly timeline · last 24h
-              </p>
-              <ul className="max-h-56 space-y-0.5 overflow-y-auto pr-1">
-                {stats.timeline.map((slot) => {
-                  const meta = slot.status ? STATUS_META[slot.status] : null;
-                  return (
-                    <li
-                      key={slot.timestamp}
-                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent/50"
-                    >
-                      <span
-                        className={cn(
-                          "size-1.5 shrink-0 rounded-full",
-                          meta ? meta.dot : "bg-muted-foreground/40"
-                        )}
-                        aria-hidden
-                      />
-                      <span className="w-14 shrink-0 font-mono text-xs text-muted-foreground">
-                        {formatHour(slot.timestamp)}
-                      </span>
-                      <span
-                        className={cn(
-                          "text-xs",
-                          meta ? "text-foreground" : "text-muted-foreground"
-                        )}
-                      >
-                        {meta ? meta.label : "No data"}
-                      </span>
-                      <span className="ml-auto font-mono text-xs text-muted-foreground">
-                        {formatLatency(slot.responseTime)}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-
             <p className="text-xs text-muted-foreground">
               Last checked {formatTimeAgo(service.checkedAt)}
             </p>
@@ -305,14 +114,16 @@ export function ServiceDetailDialog() {
               </a>
             </Button>
 
-            <Button size="sm" variant="outline" asChild>
-              <a
-                href={`/status/${service.id}`}
-                onClick={(e) => e.stopPropagation()}
-              >
-                Status page
-              </a>
-            </Button>
+            {STATUS_PAGES_ENABLED && (
+              <Button size="sm" variant="outline" asChild>
+                <a
+                  href={`/status/${service.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Status page
+                </a>
+              </Button>
+            )}
 
             <EmbedSnippet serviceId={service.id} name={service.name} />
           </div>

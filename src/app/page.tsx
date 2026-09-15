@@ -2,7 +2,7 @@ import { HomeTabs } from "@/features/services-monitor";
 import { ProvenanceBanner } from "@/features/services-monitor/components/ProvenanceBanner";
 import { CATEGORY_LABELS } from "@/features/services-monitor/components/status-meta";
 import { serviceCategorySchema } from "@/features/services-monitor/types";
-import { SITE_URL } from "@/lib/site";
+import { SITE_URL, STATUS_PAGES_ENABLED } from "@/lib/site";
 import seedData from "@/data/seed-services.json";
 
 // Fully static: the shell is served instantly from the CDN edge cache and
@@ -35,7 +35,9 @@ export default function DashboardPage() {
       "@type": "ListItem",
       position: i + 1,
       name: s.name,
-      url: `${SITE_URL}/status/${s.id}`,
+      url: STATUS_PAGES_ENABLED
+        ? `${SITE_URL}/status/${s.id}`
+        : `${SITE_URL}/category/${s.category}`,
     })),
   };
 
@@ -58,7 +60,7 @@ export default function DashboardPage() {
         </h1>
         <p className="text-base text-muted-foreground">
           Live uptime and health checks for Nepal&apos;s essential citizen,
-          finance, and ministry portals — refreshed every 5 minutes.
+          finance, and ministry portals — fetched live in your browser.
         </p>
         <ProvenanceBanner />
       </header>
@@ -71,14 +73,12 @@ export default function DashboardPage() {
           Nepal government portal status — every service we monitor
         </h2>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          IsGovOnline checks {seedData.length} Nepali government websites
-          and digital public services every 5 minutes from a Nepal vantage
-          point — passports, tax filing, driving licenses, land records, NEPSE,
-          ministries, universities, and municipalities. Each service has a
-          dedicated status page answering &quot;is it down?&quot; with live
-          status, 24-hour uptime bars, latency, and confirmed outage alerts.
-          See an outage that matters to you? Each status page carries the full
-          24-hour and long-term reliability record.
+          IsGovOnline checks {seedData.length} Nepali government websites and
+          digital public services from a Nepal vantage point — passports, tax
+          filing, driving licenses, land records, NEPSE, ministries,
+          universities, and municipalities. The dashboard fetches the current
+          status live in your browser, so every visitor sees the latest reading
+          along with latency and the HTTP response for each service.
         </p>
 
         <div className="mt-8 grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
@@ -101,12 +101,18 @@ export default function DashboardPage() {
                 <ul className="mt-3 space-y-1.5 text-sm">
                   {services.map((service) => (
                     <li key={service.id}>
-                      <a
-                        href={`/status/${service.id}`}
-                        className="text-muted-foreground transition-colors hover:text-foreground hover:underline underline-offset-2"
-                      >
-                        {service.name}
-                      </a>
+                      {STATUS_PAGES_ENABLED ? (
+                        <a
+                          href={`/status/${service.id}`}
+                          className="text-muted-foreground transition-colors hover:text-foreground hover:underline underline-offset-2"
+                        >
+                          {service.name}
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          {service.name}
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ul>

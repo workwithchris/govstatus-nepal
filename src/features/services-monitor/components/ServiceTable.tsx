@@ -7,7 +7,6 @@ import { CATEGORY_LABELS, STATUS_META } from "@/features/services-monitor/compon
 import { EmptyState } from "@/features/services-monitor/components/EmptyState";
 import { ProbeLoader } from "@/features/services-monitor/components/ProbeLoader";
 import { ServiceLogo } from "@/features/services-monitor/components/ServiceLogo";
-import { UptimeBar } from "@/features/services-monitor/components/UptimeBar";
 import { useFilteredServices } from "@/features/services-monitor/api/useFilteredServices";
 import { useDetailStore } from "@/features/services-monitor/store/useDetailStore";
 import { useFilterStore } from "@/features/services-monitor/store/useFilterStore";
@@ -75,9 +74,6 @@ export function ServiceTable() {
             <th className="px-4 py-3" aria-sort={sortBy === "latency" ? "ascending" : "none"}>
               <SortHeader column="latency" />
             </th>
-            <th className="px-4 py-3 font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Uptime · 24h
-            </th>
             <th className="px-4 py-3" aria-label="Open service" />
           </tr>
         </thead>
@@ -129,17 +125,6 @@ export function ServiceTable() {
                 </td>
                 <td className="px-4 py-3 font-mono text-xs text-foreground">
                   {formatLatency(service.responseTime)}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <UptimeBar
-                      service={service}
-                      className="h-4 w-36"
-                    />
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {service.uptimePercentage.toFixed(1)}%
-                    </span>
-                  </div>
                 </td>
                 <td className="px-4 py-3">
                   <a

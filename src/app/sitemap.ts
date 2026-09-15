@@ -1,16 +1,18 @@
 import type { MetadataRoute } from "next";
 
-import { SITE_URL } from "@/lib/site";
+import { SITE_URL, STATUS_PAGES_ENABLED } from "@/lib/site";
 import seedData from "@/data/seed-services.json";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
-  const servicePages: MetadataRoute.Sitemap = seedData.map((service) => ({
-    url: `${SITE_URL}/status/${service.id}`,
-    lastModified: now,
-    changeFrequency: "hourly",
-    priority: 0.8,
-  }));
+  const servicePages: MetadataRoute.Sitemap = STATUS_PAGES_ENABLED
+    ? seedData.map((service) => ({
+        url: `${SITE_URL}/status/${service.id}`,
+        lastModified: now,
+        changeFrequency: "hourly",
+        priority: 0.8,
+      }))
+    : [];
 
   return [
     {
