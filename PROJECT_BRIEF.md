@@ -16,7 +16,7 @@ classifies it `operational` / `degraded` / `down`, and persists hourly-bucket
 history in Cloudflare D1 for **90 days** so users see long-term uptime trends,
 not just a live snapshot.
 
-Live URL: `https://isgovonline.techyatraa.com`
+Live URL: `https://isgov.online`
 
 > **Currently hidden / removed** (temporary — see README "Feature flags"):
 > the per-service status pages, the tab shell (`HomeTabs` deleted;
@@ -352,7 +352,7 @@ progress endpoint reports `done` immediately so it never hammers.
 
 `layout.tsx`: metadata, OpenGraph, Twitter card, JSON-LD (`WebSite` +
 `Organization`). `robots.ts`, `sitemap.ts`, canonical to
-`https://isgovonline.techyatraa.com`. `public/_headers` caches
+`https://isgov.online`. `public/_headers` caches
 `/_next/static/*` immutable.
 
 ---

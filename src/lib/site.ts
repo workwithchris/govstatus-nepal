@@ -1,9 +1,9 @@
 /**
- * Canonical site URL. Swap here when the project moves off the
- * techyatraa.com subdomain onto a dedicated domain — everything
- * (metadata, sitemap, robots, RSS, llms.txt, embeds) follows.
+ * Canonical site URL. Single source of truth — everything (metadata,
+ * canonical tags, sitemap, robots `Sitemap:`, llms.txt, OG URLs, embeds,
+ * unsubscribe links) follows this. Must match the deployed custom domain.
  */
-export const SITE_URL = "https://isgovonline.techyatraa.com";
+export const SITE_URL = "https://isgov.online";
 
 /**
  * Feature flag for the per-service status pages (`/status/<id>`).

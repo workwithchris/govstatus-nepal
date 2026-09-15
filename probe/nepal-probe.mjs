@@ -747,7 +747,7 @@ async function notifySubscribers(events) {
           `[${e.currentStatus.toUpperCase()}] ${e.name} — ${e.url} (was ${e.previousStatus ?? "unknown"}, http ${e.httpStatus ?? "—"})`
       )
       .join("\n");
-    const unsub = `https://isgovonline.techyatraa.com/?unsub=${encodeURIComponent(email)}`;
+    const unsub = `https://isgov.online/?unsub=${encodeURIComponent(email)}`;
     const text = `${lines}\n\nIsGovOnline\nUnsubscribe: ${unsub}`;
     try {
       const res = await fetch(endpoint, {
