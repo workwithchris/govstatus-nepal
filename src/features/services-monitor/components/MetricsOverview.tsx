@@ -4,6 +4,7 @@ import { Activity, Clock3, Server } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/features/services-monitor/components/ErrorState";
 import { STATUS_META } from "@/features/services-monitor/components/status-meta";
 import { useServicesHealth } from "@/features/services-monitor/api/useServicesHealth";
 import { useLang } from "@/lib/i18n";
@@ -24,8 +25,12 @@ function OverviewSkeleton() {
 }
 
 export function MetricsOverview() {
-  const { data, isLoading } = useServicesHealth();
+  const { data, isLoading, isError, refetch } = useServicesHealth();
   const { t } = useLang();
+
+  if (isError) {
+    return <ErrorState onRetry={refetch} />;
+  }
 
   if (isLoading || !data) {
     return <OverviewSkeleton />;

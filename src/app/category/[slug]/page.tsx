@@ -13,7 +13,7 @@ import {
   serviceCategorySchema,
 } from "@/features/services-monitor/types";
 import { STATUS_PAGES_ENABLED } from "@/lib/site";
-import { pageMetadata } from "@/lib/seo";
+import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
 import { cn, formatLatency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const label = CATEGORY_LABELS[category] ?? category;
   return pageMetadata({
     title: `${label} portals — live status`,
-    description: `Live uptime and health status for Nepal's ${label.toLowerCase()} government portals and digital public services, checked every 5 minutes from Nepal.`,
+    description: `Live uptime and health status for Nepal's ${label.toLowerCase()} government portals and digital public services, measured live by our own probe.`,
     path: `/category/${category}`,
   });
 }
@@ -66,6 +66,17 @@ export default async function CategoryPage({ params }: Props) {
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 lg:py-14">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(
+            breadcrumbJsonLd({
+              name: `${label} portals`,
+              path: `/category/${category}`,
+            })
+          ),
+        }}
+      />
       <header className="mb-8 space-y-3">
         <p className="font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Category · IsGovOnline
@@ -74,8 +85,8 @@ export default async function CategoryPage({ params }: Props) {
           {label} portals
         </h1>
         <p className="max-w-2xl text-base text-muted-foreground">
-          {members.length} {label.toLowerCase()} services monitored every 5
-          minutes from Nepal — {operational} operational, {degraded} degraded,{" "}
+          {members.length} {label.toLowerCase()} services, measured live by our
+          own probe — {operational} operational, {degraded} degraded,{" "}
           {down} down right now.
         </p>
       </header>
@@ -140,10 +151,6 @@ export default async function CategoryPage({ params }: Props) {
           className="text-primary underline underline-offset-2"
         >
           methodology page
-        </Link>
-        , or view the{" "}
-        <Link href="/worst" className="text-primary underline underline-offset-2">
-          least reliable portals
         </Link>
         .
       </p>

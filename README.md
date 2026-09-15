@@ -33,16 +33,14 @@ persists status history in Cloudflare D1.
 - **TLS-relaxed retry** — Node/undici rejects incomplete certificate chains
   that browsers tolerate; probes retry once with relaxed TLS so certificate
   quirks don't read as outages
-- **24-hour uptime history** — hourly history per service, aggregated per hour
-  from every probe sample and persisted to Cloudflare D1 (**90-day retention**).
-  An hour counts as `down` if any sample in that hour was down, so a
-  one-minute blip isn't hidden by a good final check. The 24h bars/labels are
-  currently hidden across the dashboard (see **Feature flags**) but the data is
-  still recorded and served
-- **Long-term uptime** — 30/90-day per-service uptime % and daily bars via
+- **24-hour uptime history** — hourly history per service is aggregated from
+  every probe sample and persisted to Cloudflare D1 (**90-day retention**)
+  when D1 is enabled. It's currently **paused** (`DISABLE_D1=true`) and the
+  24h bars/labels are hidden across the dashboard
+- **Long-term uptime** — 30/90-day per-service uptime % via
   `/api/health/history?service=<id>&days=30` (rolled up from the hourly
-  buckets); surfaced on the Compare page (the service detail dialog now shows
-  only the live snapshot)
+  buckets). The Compare / reliability-ranking pages that surfaced it are
+  currently removed
 - **TLS cert tracking** — cert expiry is captured via a lightweight TLS
   handshake (re-checked every 6h, Node only) and surfaced per service
 - **Status-change alerts** — when a service transitions to/from down or
@@ -54,27 +52,29 @@ persists status history in Cloudflare D1.
   `EMAIL_SENDING_ACCOUNT_ID` / `EMAIL_SENDING_API_TOKEN` / `NOTIFY_FROM`
   (domain onboarded to Cloudflare Email Sending). Until then the subscribe UI
   is hidden and the API refuses writes.
-- **Incident log** — `/api/incidents` (JSON), `/feed.xml` (RSS 2.0), and an
-  Incidents tab (**currently hidden**, see **Feature flags**): contiguous
-  non-operational runs per service over the last 7 days, ongoing vs resolved
+- **Incident log** — `/api/incidents` (JSON): contiguous non-operational runs
+  per service over the last 7 days, ongoing vs resolved. The RSS feed
+  (`/feed.xml`) and Incidents tab are currently removed/hidden
 - **Provenance + freshness banner** — the dashboard always says how the data
   was gathered (Nepal vantage) and how stale it is; a stale snapshot or
   simulated fallback is flagged, never presented as live
-- **Embed widget** — `/embed/<serviceId>` renders a server-side, no-JS status
-  widget (copy the iframe snippet from the service dialog)
+- **Embed widget** — `/embed/<serviceId>` still renders a server-side, no-JS
+  status widget, but the iframe snippet was removed from the service dialog and
+  the CSP blocks framing (`frame-ancestors 'none'`) while it's dormant
 - **Nepali UI toggle** — English/नेपाली language switch for the main chrome
 - **Live probe loader** — a full-page loader with real progress
   (checked/total, down/degraded counts, recent completions) streamed from a
   progress endpoint
 - **Dashboard** — metric cards, instant search, category tabs with counts,
   sort by status/name/latency, card grid + sortable table view, dark/light
-  mode
+  mode, English/नेपाली toggle
 - **SEO & AI crawlability** — a sitemap, an `llms.txt` manifest for AI engines
-  (ChatGPT/Perplexity/Gemini), keyword-rich homepage content, and incident RSS
-  items. Per-service status pages (`/status/<id>`, "Is … down?" metadata,
-  `GovernmentService` JSON-LD, per-service OG image) are built but
-  **currently disabled** (see **Feature flags**): the route 404s, links are
-  hidden, and the pages are dropped from the sitemap/RSS/llms.txt
+  (ChatGPT/Perplexity/Gemini), JSON-LD (ItemList + BreadcrumbList), OG/Twitter
+  images, and keyword-rich homepage content. Per-service status pages
+  (`/status/<id>`, "Is … down?" metadata, `GovernmentService` JSON-LD,
+  per-service OG image) are built but **currently disabled** (see **Feature
+  flags**): the route 404s, links are hidden, and the pages are dropped from the
+  sitemap and `llms.txt`
 - **Caching & fast fetch** — the snapshot is cached in each visitor's browser
   for 5 min (`max-age=300`, so soft reloads/navigations don't refetch; a hard
   reload bypasses it) and at the edge (`s-maxage=60,
@@ -297,16 +297,18 @@ Check the Worker secrets and `/api/diag`'s `databaseId` field.
 Temporary switches. Flip the flag to `true` to bring the feature back — the
 view components and data pipelines are untouched.
 
-| Flag | File | When `false` |
+| Flag | File | Effect |
 |---|---|---|
-| `STATUS_PAGES_ENABLED` | [`src/lib/site.ts`](src/lib/site.ts) | `/status/<id>` returns 404; links hidden in the dashboard, category, ranking, compare, and detail-modal views; pages dropped from the sitemap, RSS (`/feed.xml`), and `llms.txt` |
-| `ANALYTICS_TAB_ENABLED` | [`HomeTabs.tsx`](src/features/services-monitor/components/HomeTabs.tsx) | Analytics tab hidden |
-| `INCIDENTS_TAB_ENABLED` | [`HomeTabs.tsx`](src/features/services-monitor/components/HomeTabs.tsx) | Incidents tab hidden |
+| `STATUS_PAGES_ENABLED = false` | [`src/lib/site.ts`](src/lib/site.ts) | `/status/<id>` returns 404; links hidden in the dashboard, category, and detail-modal views; pages dropped from the sitemap and `llms.txt` |
+| `DISABLE_D1=true` (env) | [`src/lib/d1.ts`](src/lib/d1.ts) | No database: reads empty, writes no-op; the app falls back to **live self-probing on Node** so latency is measured live |
+| `PROBE_DISABLED=true` (env) | [`probe/nepal-probe.mjs`](probe/nepal-probe.mjs) | Nepal probe cron/launchd runs become no-ops |
 
-Also currently hidden in the UI (no flag — edit the components to restore):
-the 24h uptime bar/percentage in the home table and service cards, and the
-history sections (24h stats, long-range stats, hourly timeline) of the service
-detail dialog, which now shows only the snapshot the client fetched live.
+Also currently removed/hidden in the UI (no flag — edit the components to
+restore): the tab shell (`HomeTabs.tsx` deleted; dashboard content renders
+directly, `AnalyticsView`/`IncidentsView` dormant), the 24h uptime bar/percentage
+in the home table and service cards, the history sections of the service detail
+dialog (it shows only the client-fetched live snapshot), and the embed iframe
+snippet.
 
 ## License
 

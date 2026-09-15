@@ -3,27 +3,30 @@
 import { ExternalLink } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { CATEGORY_LABELS, STATUS_META } from "@/features/services-monitor/components/status-meta";
+import { STATUS_META } from "@/features/services-monitor/components/status-meta";
 import { EmptyState } from "@/features/services-monitor/components/EmptyState";
+import { ErrorState } from "@/features/services-monitor/components/ErrorState";
 import { ProbeLoader } from "@/features/services-monitor/components/ProbeLoader";
 import { ServiceLogo } from "@/features/services-monitor/components/ServiceLogo";
 import { useFilteredServices } from "@/features/services-monitor/api/useFilteredServices";
 import { useDetailStore } from "@/features/services-monitor/store/useDetailStore";
 import { useFilterStore } from "@/features/services-monitor/store/useFilterStore";
 import type { SortBy } from "@/features/services-monitor/types";
+import { useLang, type TranslationKey } from "@/lib/i18n";
 import { cn, formatLatency } from "@/lib/utils";
 
-const SORTABLE_COLUMNS: { key: SortBy; label: string }[] = [
-  { key: "name", label: "Service" },
-  { key: "status", label: "Status" },
-  { key: "latency", label: "Latency" },
+const SORTABLE_COLUMNS: { key: SortBy; labelKey: TranslationKey }[] = [
+  { key: "name", labelKey: "table.service" },
+  { key: "status", labelKey: "table.status" },
+  { key: "latency", labelKey: "table.latency" },
 ];
 
 function SortHeader({ column }: { column: SortBy }) {
+  const { t } = useLang();
   const sortBy = useFilterStore((s) => s.sortBy);
   const setSortBy = useFilterStore((s) => s.setSortBy);
   const active = sortBy === column;
-  const label = SORTABLE_COLUMNS.find((c) => c.key === column)?.label;
+  const labelKey = SORTABLE_COLUMNS.find((c) => c.key === column)?.labelKey;
 
   return (
     <button
@@ -34,7 +37,7 @@ function SortHeader({ column }: { column: SortBy }) {
         active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
       )}
     >
-      {label}
+      {labelKey && t(labelKey)}
       {active && (
         <span aria-hidden className="text-[10px] leading-none">
           ▲
@@ -45,9 +48,14 @@ function SortHeader({ column }: { column: SortBy }) {
 }
 
 export function ServiceTable() {
-  const { services, isLoading } = useFilteredServices();
+  const { t } = useLang();
+  const { services, isLoading, isError, refetch } = useFilteredServices();
   const sortBy = useFilterStore((s) => s.sortBy);
   const setSelectedServiceId = useDetailStore((s) => s.setSelectedServiceId);
+
+  if (isError) {
+    return <ErrorState onRetry={refetch} />;
+  }
 
   if (isLoading) {
     return <ProbeLoader variant="compact" />;
@@ -66,7 +74,7 @@ export function ServiceTable() {
               <SortHeader column="name" />
             </th>
             <th className="px-4 py-3 font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Category
+              {t("table.category")}
             </th>
             <th className="px-4 py-3" aria-sort={sortBy === "status" ? "ascending" : "none"}>
               <SortHeader column="status" />
@@ -74,7 +82,7 @@ export function ServiceTable() {
             <th className="px-4 py-3" aria-sort={sortBy === "latency" ? "ascending" : "none"}>
               <SortHeader column="latency" />
             </th>
-            <th className="px-4 py-3" aria-label="Open service" />
+            <th className="px-4 py-3" aria-label={t("table.open")} />
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
@@ -112,7 +120,7 @@ export function ServiceTable() {
                 </td>
                 <td className="px-4 py-3">
                   <Badge variant="secondary">
-                    {CATEGORY_LABELS[service.category] ?? service.category}
+                    {t(`category.${service.category}` as TranslationKey)}
                   </Badge>
                 </td>
                 <td className="px-4 py-3">

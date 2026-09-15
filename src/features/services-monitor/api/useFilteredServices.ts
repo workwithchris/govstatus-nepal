@@ -14,8 +14,10 @@ import type { SlimServiceHealth } from "@/features/services-monitor/types";
 export function useFilteredServices(): {
   services: SlimServiceHealth[];
   isLoading: boolean;
+  isError: boolean;
+  refetch: () => void;
 } {
-  const { data, isLoading } = useServicesHealth();
+  const { data, isLoading, isError, refetch } = useServicesHealth();
   const searchQuery = useFilterStore((s) => s.searchQuery);
   const selectedCategory = useFilterStore((s) => s.selectedCategory);
   const sortBy = useFilterStore((s) => s.sortBy);
@@ -47,5 +49,5 @@ export function useFilteredServices(): {
     });
   }, [data, searchQuery, selectedCategory, sortBy]);
 
-  return { services: filtered, isLoading };
+  return { services: filtered, isLoading, isError, refetch };
 }

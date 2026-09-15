@@ -29,22 +29,23 @@ export function ProvenanceBanner() {
   const isSimulated = data.source === "simulated";
   const stale = !isSimulated && minutesOld > 10;
 
+  const freshness = isSimulated
+    ? t("provenance.simulated")
+    : stale
+      ? t("provenance.stale", { min: minutesOld })
+      : minutesOld <= 1
+        ? t("provenance.justNow")
+        : t("provenance.updated", { min: minutesOld });
+
   return (
     <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
       <Info className="size-3.5 shrink-0" aria-hidden />
       <span>
         {t("provenance.vantage")}
-        {isSimulated
-          ? " · showing simulated history (D1 not configured)"
-          : stale
-            ? ` · last real check ${minutesOld} min ago`
-            : minutesOld <= 1
-              ? " · updated just now"
-              : ` · updated ${minutesOld} min ago`}
-        .
+        {freshness}.
       </span>
       <span className="inline-flex items-center gap-1">
-        🇳🇵 Down may mean unreachable from the probe, not from your ISP.
+        {t("provenance.note")}
       </span>
     </p>
   );

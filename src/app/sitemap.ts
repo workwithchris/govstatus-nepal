@@ -33,18 +33,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...servicePages,
     ...categoryPages,
     {
-      url: `${SITE_URL}/worst`,
-      lastModified: now,
-      changeFrequency: "hourly",
-      priority: 0.6,
-    },
-    {
-      url: `${SITE_URL}/compare`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.5,
-    },
-    {
       url: `${SITE_URL}/about`,
       lastModified: now,
       changeFrequency: "monthly",
@@ -57,10 +45,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.5,
     },
     {
-      url: `${SITE_URL}/feed.xml`,
+      url: `${SITE_URL}/privacy`,
       lastModified: now,
-      changeFrequency: "hourly",
-      priority: 0.3,
+      changeFrequency: "yearly",
+      priority: 0.2,
+    },
+    {
+      url: `${SITE_URL}/terms`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.2,
     },
   ];
 }

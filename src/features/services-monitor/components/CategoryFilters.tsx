@@ -20,13 +20,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { CATEGORY_LABELS } from "@/features/services-monitor/components/status-meta";
 import { useServicesHealth } from "@/features/services-monitor/api/useServicesHealth";
 import { useFilterStore } from "@/features/services-monitor/store/useFilterStore";
 import {
   categoryFilterSchema,
   type CategoryFilter,
 } from "@/features/services-monitor/types";
+import { useLang, type TranslationKey } from "@/lib/i18n";
 
 const FILTER_ORDER: CategoryFilter[] = [
   "all",
@@ -55,6 +55,7 @@ const CATEGORY_ICON: Record<CategoryFilter, LucideIcon> = {
 };
 
 export function CategoryFilters() {
+  const { t } = useLang();
   const selectedCategory = useFilterStore((s) => s.selectedCategory);
   const setSelectedCategory = useFilterStore((s) => s.setSelectedCategory);
   const { data, isLoading } = useServicesHealth();
@@ -85,7 +86,7 @@ export function CategoryFilters() {
                 className="size-3.5 shrink-0 text-muted-foreground"
                 aria-hidden
               />
-              {category === "all" ? "All" : CATEGORY_LABELS[category]}
+              {t(`category.${category}` as TranslationKey)}
               <span className="font-mono text-xs text-muted-foreground">
                 {counts.get(category) ?? 0}
               </span>

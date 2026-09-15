@@ -32,7 +32,7 @@ export function buildServiceMetadata(
   const description = `Is ${seed.name} down? ${statusSentence(
     status,
     seed.name
-  )} See live status, 24-hour uptime and reliability for ${seed.name} (${seed.url}). Monitored every 5 minutes from Nepal.`;
+  )} See live status and reliability for ${seed.name} (${seed.url}). Measured live by our own probe.`;
 
   return {
     title: `Is ${seed.name} down? Status & uptime`,

@@ -72,7 +72,7 @@ export default async function ServiceStatusPage({ params }: Props) {
 
       <header className="mt-4 space-y-3">
         <p className="font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {seed.category} · 🇳🇵 Monitored every 5 minutes from Nepal
+          {seed.category} · 🇳🇵 Measured live by our own probe
         </p>
         <h1 className="text-4xl font-semibold leading-none tracking-[-0.05em] text-foreground sm:text-5xl">
           Is {service.name} down?
@@ -124,7 +124,7 @@ export default async function ServiceStatusPage({ params }: Props) {
             dateStyle: "medium",
             timeStyle: "short",
           })}
-          . Measured from a Nepal vantage point every 5 minutes.
+          . Measured live by our own probe.
         </p>
       </section>
 
@@ -149,7 +149,7 @@ export default async function ServiceStatusPage({ params }: Props) {
           , part of IsGovOnline&apos;s {seed.category} category.
         </p>
         <p>
-          Every 5 minutes the service is checked from a Nepal vantage point and
+          The service is measured live by our own probe and
           reported as{" "}
           <span className="font-medium text-emerald-600 dark:text-emerald-400">
             operational
@@ -192,17 +192,11 @@ export default async function ServiceStatusPage({ params }: Props) {
           Methodology
         </Link>
         <Link
-          href="/worst"
+          href="/privacy"
           className="rounded-md border border-border px-3 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
         >
-          Reliability ranking
+          Privacy
         </Link>
-        <a
-          href="/feed.xml"
-          className="rounded-md border border-border px-3 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          Incident feed (RSS)
-        </a>
       </nav>
     </main>
   );

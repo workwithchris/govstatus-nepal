@@ -3,6 +3,7 @@
 import { TriangleAlert } from "lucide-react";
 
 import { useServicesHealth } from "@/features/services-monitor/api/useServicesHealth";
+import { useLang } from "@/lib/i18n";
 
 /**
  * Shown when status history is fabricated (D1 unconfigured/unreachable) so
@@ -10,6 +11,7 @@ import { useServicesHealth } from "@/features/services-monitor/api/useServicesHe
  */
 export function SimulatedDataNotice() {
   const { data } = useServicesHealth();
+  const { t } = useLang();
 
   if (data?.source !== "simulated") return null;
 
@@ -20,9 +22,8 @@ export function SimulatedDataNotice() {
         aria-hidden
       />
       <p className="text-amber-700 dark:text-amber-300">
-        <span className="font-semibold">Simulated history.</span> Live probing
-        is working, but status history is fabricated because Cloudflare D1 is
-        not connected. Configure it for real uptime data.
+        <span className="font-semibold">{t("simulated.title")}</span>{" "}
+        {t("simulated.body")}
       </p>
     </div>
   );

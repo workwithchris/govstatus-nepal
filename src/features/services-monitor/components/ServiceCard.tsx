@@ -4,13 +4,11 @@ import { ExternalLink } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import {
-  CATEGORY_LABELS,
-  STATUS_META,
-} from "@/features/services-monitor/components/status-meta";
+import { STATUS_META } from "@/features/services-monitor/components/status-meta";
 import { ServiceLogo } from "@/features/services-monitor/components/ServiceLogo";
 import { useDetailStore } from "@/features/services-monitor/store/useDetailStore";
 import type { SlimServiceHealth } from "@/features/services-monitor/types";
+import { useLang, type TranslationKey } from "@/lib/i18n";
 import { cn, formatLatency } from "@/lib/utils";
 
 interface ServiceCardProps {
@@ -18,6 +16,7 @@ interface ServiceCardProps {
 }
 
 export function ServiceCard({ service }: ServiceCardProps) {
+  const { t } = useLang();
   const meta = STATUS_META[service.status];
   const StatusIcon = meta.icon;
   const setSelectedServiceId = useDetailStore((s) => s.setSelectedServiceId);
@@ -77,7 +76,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
       <div className="border-t border-border px-4 py-3 sm:px-6 sm:py-4">
         <div className="mb-2.5 flex items-center justify-between gap-3 sm:mb-3">
           <Badge variant="secondary">
-            {CATEGORY_LABELS[service.category] ?? service.category}
+            {t(`category.${service.category}` as TranslationKey)}
           </Badge>
           <p className="font-mono text-[10px] text-muted-foreground sm:text-[11px]">
             {formatLatency(service.responseTime)}

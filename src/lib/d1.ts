@@ -31,9 +31,20 @@ function getRestConfig(): D1Env | null {
     : null;
 }
 
-export const d1Config: D1Env | null = getRestConfig();
+/**
+ * Kill-switch: set `DISABLE_D1=true` to run with no database at all. Reads
+ * return empty, writes become no-ops, and `getServicesHealth` falls back to
+ * live self-probing (Node runtimes only). "For now" convenience — the history
+ * and long-term uptime surfaces go blank while this is on.
+ */
+const D1_DISABLED =
+  process.env.DISABLE_D1 === "true" || process.env.DISABLE_D1 === "1";
+
+export const d1Config: D1Env | null = D1_DISABLED ? null : getRestConfig();
 
 async function getNativeDb(): Promise<D1Database | null> {
+  if (D1_DISABLED) return null;
+
   // 1. Try globalThis.DB (standard workerd global binding)
   if (
     typeof (globalThis as unknown as { DB?: D1Database }).DB !== "undefined" &&
@@ -67,6 +78,7 @@ async function getNativeDb(): Promise<D1Database | null> {
 
 /** Check if D1 is reachable (either natively or via REST config). */
 export async function isD1Available(): Promise<boolean> {
+  if (D1_DISABLED) return false;
   if (getRestConfig()) return true;
   const native = await getNativeDb();
   return native !== null;

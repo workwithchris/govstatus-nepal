@@ -3,14 +3,16 @@
 import { LayoutGrid, Table } from "lucide-react";
 
 import { useFilterStore } from "@/features/services-monitor/store/useFilterStore";
+import { useLang, type TranslationKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const VIEWS = [
-  { key: "grid", label: "Card grid view", Icon: LayoutGrid },
-  { key: "table", label: "Table view", Icon: Table },
+  { key: "grid", labelKey: "view.grid", Icon: LayoutGrid },
+  { key: "table", labelKey: "view.table", Icon: Table },
 ] as const;
 
 export function ViewToggle() {
+  const { t } = useLang();
   const view = useFilterStore((s) => s.view);
   const setView = useFilterStore((s) => s.setView);
 
@@ -20,13 +22,13 @@ export function ViewToggle() {
       // toggle is meaningless on smaller viewports.
       className="hidden items-center gap-0.5 rounded-full border border-border bg-card p-0.5 lg:flex"
       role="group"
-      aria-label="Switch view"
+      aria-label={t("view.aria")}
     >
-      {VIEWS.map(({ key, label, Icon }) => (
+      {VIEWS.map(({ key, labelKey, Icon }) => (
         <button
           key={key}
           type="button"
-          aria-label={label}
+          aria-label={t(labelKey as TranslationKey)}
           aria-pressed={view === key}
           onClick={() => setView(key)}
           className={cn(

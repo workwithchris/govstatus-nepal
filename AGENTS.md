@@ -52,13 +52,15 @@ Uptime monitor for Nepal's government portals. Next.js 16 (App Router, Turbopack
 
 Add a service to `src/data/seed-services.json` and tabs/counts/probes pick it up automatically (Zod-validated against `seedServiceSchema`). API payloads and models are validated with Zod (`src/features/services-monitor/types`).
 
-## Temporarily hidden features (flags)
+## Temporarily hidden / removed (for now)
 
-Surfaces hidden for now behind code flags — flip to `true` to restore; the components and data pipelines are intact. Don't delete the code when "removing" one.
+Don't delete the dormant code when "removing" a surface — it's kept for restore.
 
 - `STATUS_PAGES_ENABLED` (`src/lib/site.ts`) — when `false`, `/status/<id>` returns 404 and every link/listing is hidden (dashboard, category, ranking, compare, detail modal) and it's dropped from sitemap/RSS/llms.txt.
-- `ANALYTICS_TAB_ENABLED` / `INCIDENTS_TAB_ENABLED` (`src/features/services-monitor/components/HomeTabs.tsx`) — tab visibility.
-- Hidden inline (no flag): the 24h uptime bar/percentage in the home table and service cards, and the history sections of the service detail dialog (it shows only the client-fetched live snapshot).
+- **Tabs removed**: `HomeTabs.tsx` is deleted and the dashboard content renders directly in `app/page.tsx`. `AnalyticsView` / `IncidentsView` are dormant (unreferenced) — restore by re-adding a tab shell.
+- Hidden inline (no flag): the 24h uptime bar/percentage in the home table and service cards, and the history sections of the service detail dialog (it shows only the client-fetched live snapshot). The embed iframe snippet was removed from the dialog.
+- **`DISABLE_D1=true`** (`.env`) — runs with no database: reads return empty, writes are no-ops, and `getServicesHealth` falls back to **live self-probing on Node** (so latency is measured live). `.env` currently sets it; remove it to restore D1. The Worker still never probes (serve-only).
+- `PROBE_DISABLED=true` makes `probe/nepal-probe.mjs` cron/launchd runs no-ops.
 
 ## Other references
 

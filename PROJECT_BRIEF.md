@@ -18,10 +18,13 @@ not just a live snapshot.
 
 Live URL: `https://isgovonline.techyatraa.com`
 
-> **Currently hidden** (temporary, flag-gated — see README "Feature flags"):
-> the per-service status pages, the Analytics/Incidents tabs, the 24h uptime
-> bars in the home table/cards, and the history sections of the service detail
-> dialog. The data pipelines behind all of them remain intact.
+> **Currently hidden / removed** (temporary — see README "Feature flags"):
+> the per-service status pages, the tab shell (`HomeTabs` deleted;
+> `AnalyticsView`/`IncidentsView` dormant), `/worst`, `/compare`, the RSS feed
+> (`/feed.xml`), the 24h uptime bars in the home table/cards, the history
+> sections of the service detail dialog, and the embed iframe snippet. D1 is
+> disabled (`DISABLE_D1=true`) so the app live self-probes on Node; the data
+> pipelines remain in the codebase.
 
 ### Core principle — vantage point honesty
 
@@ -70,12 +73,15 @@ govstatus/
 │   │   ├── layout.tsx               # Root shell: Geist fonts, metadata, OG, JSON-LD
 │   │   ├── page.tsx                 # Dashboard (static shell, client-fetched data)
 │   │   ├── loading.tsx              # Full-page ProbeLoader
-│   │   ├── about/page.tsx           # Static "Why this exists" page
+│   │   ├── about/page.tsx           # About page (content in client AboutContent)
+│   │   ├── methodology/page.tsx     # Methodology page (client MethodologyContent)
+│   │   ├── privacy / terms/page.tsx # Legal pages
+│   │   ├── error.tsx / global-error.tsx / not-found.tsx  # Error + 404 boundaries
+│   │   ├── manifest.ts              # Web app manifest
 │   │   ├── status/[serviceId]/page.tsx  # Per-service status page (404 unless STATUS_PAGES_ENABLED)
 │   │   ├── providers.tsx            # React Query + Theme + Lang providers
 │   │   ├── robots.ts / sitemap.ts   # SEO
-│   │   ├── feed.xml/route.ts        # RSS 2.0 incident feed
-│   │   ├── embed/[serviceId]/page.tsx  # Server-side no-JS embed widget
+│   │   ├── embed/[serviceId]/page.tsx  # Server-side no-JS embed widget (dormant; CSP blocks framing)
 │   │   └── api/
 │   │       ├── health/route.ts        # ISR snapshot (revalidate 60)
 │   │       ├── health/history/route.ts  # Daily history (30/90d)
@@ -284,9 +290,8 @@ returns 403 there; probing is owned solely by `probe/nepal-probe.mjs`.
 | `/api/incidents` | GET | 7-day incident feed (JSON) | `no-store` |
 | `/api/diag` | GET | Ops diagnostics: D1 config, source, staleness, DB-id mismatch detection | `no-store` |
 | `/api/subscribe` | POST/DELETE | Email subs. **503 unless `ENABLE_NOTIFICATIONS=true`** | — |
-| `/feed.xml` | GET | RSS 2.0 incidents feed | `no-store` |
-| `/embed/[serviceId]` | GET | No-JS embed widget (SSR) | `revalidate=60` |
-| `/robots.txt`, `/sitemap.xml` | GET | SEO | static |
+| `/embed/[serviceId]` | GET | No-JS embed widget (SSR); dormant, CSP blocks framing | `revalidate=60` |
+| `/robots.txt`, `/sitemap.xml`, `/manifest.webmanifest` | GET | SEO / PWA | static |
 
 `/api/diag` is the **#1 ops check**: it reports whether D1 is configured, which
 `accountId`/`databaseId` it's pointing at, `source`, staleness (minutes since the
@@ -305,21 +310,15 @@ ink/mute/faint/hairline tokens, a single multi-stop gradient for the hero
 Pill buttons for marketing CTAs, 6px square for app chrome. Status colors:
 emerald (operational), amber (degraded), rose (down).
 
-### Dashboard (`app/page.tsx` + `HomeTabs`)
+### Dashboard (`app/page.tsx`)
 
 Fully **static shell** (rendered instantly from CDN edge); all live data is
 fetched client-side by React Query, so each visitor sees the latest snapshot in
-their own browser. Three tabs, two currently hidden behind
-`ANALYTICS_TAB_ENABLED` / `INCIDENTS_TAB_ENABLED` in `HomeTabs.tsx`:
-
-1. **Dashboard** — `SimulatedDataNotice` (banner when `source=simulated`),
-   `MetricsOverview` (3 stat cards: total monitored, system status, avg response),
-   `SearchAndSortBar`, `CategoryFilters` (9 categories with counts), `StatusLegend`,
-   `ServicesView` (grid OR sortable table, toggleable). The 24h uptime
-   bar/percentage is currently hidden in both the table and the cards.
-2. **Analytics** (hidden) — Recharts: category uptime, latency trend, incident
-   chart, slowest services.
-3. **Incidents** (hidden) — derived incident list with ongoing/resolved badges.
+their own browser. The tab shell was removed — `page.tsx` renders the dashboard
+content directly (`SimulatedDataNotice`, `MetricsOverview`, `SearchAndSortBar`,
+`CategoryFilters`, `StatusLegend`, `ServicesView`). `HomeTabs` is deleted;
+`AnalyticsView` / `IncidentsView` are dormant. The 24h uptime bar/percentage is
+hidden in both the table and the cards.
 
 ### Client state & data flow
 
@@ -328,9 +327,9 @@ their own browser. Three tabs, two currently hidden behind
 - `useDetailStore`: which service is open in the detail dialog.
 - `useServicesHealth`: `/api/health?slim=1` (no 24h arrays), staleTime +
   refetchInterval **5 min**, no refetch-on-window-focus — dashboard data.
-- `useServicesFullHealth`: `/api/health` (full payload) — used by Compare and
-  Analytics, which still read the 24h `history`/`latencies`.
-- `useServiceHistory` / `useIncidents`: same pattern.
+- `useServicesFullHealth`: `/api/health` (full payload) — used by the dormant
+  Compare/Analytics views, which still read the 24h `history`/`latencies`.
+- `useServiceHistory` / `useIncidents`: history/incident hooks (dormant).
 - `Providers`: React Query + `next-themes` (dark/light/system) + `LangProvider`.
 - **i18n** (`lib/i18n.tsx`): `en` / `ne` (नेपाली) switch for main chrome,
   persisted in `localStorage`.

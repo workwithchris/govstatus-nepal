@@ -10,15 +10,17 @@ import {
   sortBySchema,
   type SortBy,
 } from "@/features/services-monitor/types";
+import { useLang, type TranslationKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-const SORT_OPTIONS: { value: SortBy; label: string }[] = [
-  { value: "status", label: "Status" },
-  { value: "name", label: "Name" },
-  { value: "latency", label: "Latency" },
+const SORT_OPTIONS: { value: SortBy; labelKey: TranslationKey }[] = [
+  { value: "status", labelKey: "sort.status" },
+  { value: "name", labelKey: "sort.name" },
+  { value: "latency", labelKey: "sort.latency" },
 ];
 
 export function SearchAndSortBar() {
+  const { t } = useLang();
   const searchQuery = useFilterStore((s) => s.searchQuery);
   const setSearchQuery = useFilterStore((s) => s.setSearchQuery);
   const sortBy = useFilterStore((s) => s.sortBy);
@@ -35,8 +37,8 @@ export function SearchAndSortBar() {
           type="search"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search services…"
-          aria-label="Search services"
+          placeholder={t("search.placeholder")}
+          aria-label={t("search.aria")}
           className="pl-9"
         />
       </div>
@@ -45,7 +47,7 @@ export function SearchAndSortBar() {
         <div
           className="flex items-center gap-0.5 rounded-full border border-border bg-card p-0.5"
           role="group"
-          aria-label="Sort services"
+          aria-label={t("sort.aria")}
         >
           <ArrowDownWideNarrow
             className="ml-1.5 mr-0.5 size-4 shrink-0 text-muted-foreground"
@@ -65,7 +67,7 @@ export function SearchAndSortBar() {
               )}
               onClick={() => setSortBy(sortBySchema.parse(option.value))}
             >
-              {option.label}
+              {t(option.labelKey)}
             </Button>
           ))}
         </div>

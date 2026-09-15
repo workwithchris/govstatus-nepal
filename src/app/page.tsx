@@ -1,5 +1,12 @@
-import { HomeTabs } from "@/features/services-monitor";
+import {
+  CategoryFilters,
+  MetricsOverview,
+  SearchAndSortBar,
+  ServicesView,
+} from "@/features/services-monitor";
 import { ProvenanceBanner } from "@/features/services-monitor/components/ProvenanceBanner";
+import { SimulatedDataNotice } from "@/features/services-monitor/components/SimulatedDataNotice";
+import { StatusLegend } from "@/features/services-monitor/components/StatusLegend";
 import { CATEGORY_LABELS } from "@/features/services-monitor/components/status-meta";
 import { serviceCategorySchema } from "@/features/services-monitor/types";
 import { SITE_URL, STATUS_PAGES_ENABLED } from "@/lib/site";
@@ -31,14 +38,21 @@ export default function DashboardPage() {
     name: "Nepal government portal status",
     description:
       "Live uptime and health status for Nepal's government portals and digital public services.",
-    itemListElement: seedData.map((s, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      name: s.name,
-      url: STATUS_PAGES_ENABLED
-        ? `${SITE_URL}/status/${s.id}`
-        : `${SITE_URL}/category/${s.category}`,
-    })),
+    // When per-service pages are disabled, list categories (each service would
+    // otherwise share a duplicate category URL).
+    itemListElement: STATUS_PAGES_ENABLED
+      ? seedData.map((s, i) => ({
+          "@type": "ListItem",
+          position: i + 1,
+          name: s.name,
+          url: `${SITE_URL}/status/${s.id}`,
+        }))
+      : categories.map((c, i) => ({
+          "@type": "ListItem",
+          position: i + 1,
+          name: `${CATEGORY_LABELS[c] ?? c} portals`,
+          url: `${SITE_URL}/category/${c}`,
+        })),
   };
 
   return (
@@ -65,7 +79,16 @@ export default function DashboardPage() {
         <ProvenanceBanner />
       </header>
 
-      <HomeTabs />
+      <div className="space-y-10">
+        <SimulatedDataNotice />
+        <MetricsOverview />
+        <div className="space-y-4">
+          <SearchAndSortBar />
+          <CategoryFilters />
+          <StatusLegend />
+        </div>
+        <ServicesView />
+      </div>
 
       {/* Server-rendered SEO content: crawlable keyword text + internal links */}
       <section className="mt-16 border-t border-border pt-10">
@@ -74,7 +97,7 @@ export default function DashboardPage() {
         </h2>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
           IsGovOnline checks {seedData.length} Nepali government websites and
-          digital public services from a Nepal vantage point — passports, tax
+          digital public services with its own probe — passports, tax
           filing, driving licenses, land records, NEPSE, ministries,
           universities, and municipalities. The dashboard fetches the current
           status live in your browser, so every visitor sees the latest reading

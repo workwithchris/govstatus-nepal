@@ -15,7 +15,8 @@ import { ServiceLogo } from "@/features/services-monitor/components/ServiceLogo"
 import { STATUS_META } from "@/features/services-monitor/components/status-meta";
 import { useDetailStore } from "@/features/services-monitor/store/useDetailStore";
 import { useServicesHealth } from "@/features/services-monitor/api/useServicesHealth";
-import { SITE_URL, STATUS_PAGES_ENABLED } from "@/lib/site";
+import { useLang } from "@/lib/i18n";
+import { STATUS_PAGES_ENABLED } from "@/lib/site";
 import {
   certDaysLeft,
   cn,
@@ -24,11 +25,10 @@ import {
 } from "@/lib/utils";
 
 function TlsCertLine({ certExpiresAt }: { certExpiresAt: string | null }) {
+  const { t } = useLang();
   if (!certExpiresAt) {
     return (
-      <p className="text-xs text-muted-foreground">
-        TLS certificate expiry unknown
-      </p>
+      <p className="text-xs text-muted-foreground">{t("detail.tlsUnknown")}</p>
     );
   }
 
@@ -42,7 +42,7 @@ function TlsCertLine({ certExpiresAt }: { certExpiresAt: string | null }) {
 
   return (
     <p className="text-xs text-muted-foreground">
-      TLS certificate expires{" "}
+      {t("detail.tlsExpires")}{" "}
       <span className={cn("font-mono", tone)}>
         {new Date(certExpiresAt).toLocaleDateString("en-GB", {
           day: "2-digit",
@@ -50,12 +50,16 @@ function TlsCertLine({ certExpiresAt }: { certExpiresAt: string | null }) {
           year: "numeric",
         })}
       </span>{" "}
-      ({daysLeft < 0 ? "expired" : `${daysLeft}d left`})
+      (
+      {daysLeft < 0
+        ? t("detail.expired")
+        : t("detail.daysLeft", { days: daysLeft })})
     </p>
   );
 }
 
 export function ServiceDetailDialog() {
+  const { t } = useLang();
   const selectedServiceId = useDetailStore((s) => s.selectedServiceId);
   const setSelectedServiceId = useDetailStore((s) => s.setSelectedServiceId);
   const { data } = useServicesHealth();
@@ -96,7 +100,7 @@ export function ServiceDetailDialog() {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Last checked {formatTimeAgo(service.checkedAt)}
+              {t("detail.lastChecked")} {formatTimeAgo(service.checkedAt)}
             </p>
 
             <TlsCertLine certExpiresAt={service.certExpiresAt} />
@@ -109,7 +113,7 @@ export function ServiceDetailDialog() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <ExternalLink className="size-3.5" />
-                Open {new URL(service.url).hostname}
+                {t("detail.open")} {new URL(service.url).hostname}
               </a>
             </Button>
 
@@ -119,12 +123,10 @@ export function ServiceDetailDialog() {
                   href={`/status/${service.id}`}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  Status page
+                  {t("detail.statusPage")}
                 </a>
               </Button>
             )}
-
-            <EmbedSnippet serviceId={service.id} name={service.name} />
           </div>
         )}
       </DialogContent>
@@ -190,39 +192,6 @@ function SubscribeForm({
       {message && (
         <p className="text-xs text-muted-foreground">{message}</p>
       )}
-    </div>
-  );
-}
-
-function EmbedSnippet({ serviceId, name }: { serviceId: string; name: string }) {
-  const [copied, setCopied] = useState(false);
-  const snippet = `<iframe src="${SITE_URL}/embed/${serviceId}" width="380" height="160" style="border:0;border-radius:12px" loading="lazy" title="${name} status"></iframe>`;
-
-  return (
-    <div className="space-y-1.5">
-      <p className="font-mono text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        Embed this service
-      </p>
-      <div className="flex items-center gap-2">
-        <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-muted/50 px-2 py-1.5 font-mono text-[11px] text-muted-foreground">
-          {snippet}
-        </code>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={async () => {
-            try {
-              await navigator.clipboard.writeText(snippet);
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1500);
-            } catch {
-              /* clipboard unavailable */
-            }
-          }}
-        >
-          {copied ? "Copied" : "Copy"}
-        </Button>
-      </div>
     </div>
   );
 }

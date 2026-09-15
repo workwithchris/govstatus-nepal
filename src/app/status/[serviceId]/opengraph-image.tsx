@@ -48,7 +48,7 @@ export default function Image({ params }: { params: { serviceId: string } }) {
           </div>
           <div style={{ fontSize: 26, color: "#a1a1aa", marginTop: 20 }}>
             {service
-              ? `${service.url} · live uptime, checked every 5 minutes from Nepal`
+              ? `${service.url} · live uptime, measured by our own probe`
               : "Live uptime for Nepal's government portals"}
           </div>
         </div>

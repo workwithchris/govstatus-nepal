@@ -63,6 +63,14 @@ function loadEnv() {
 }
 
 const env = loadEnv();
+
+// Kill-switch: `PROBE_DISABLED=true` makes cron/launchd runs no-ops so the
+// machine can stay scheduled while probing/storage is paused. Set it in .env
+// or the environment when history writing should stop.
+if (env.PROBE_DISABLED === "true" || env.PROBE_DISABLED === "1") {
+  console.log("[probe] PROBE_DISABLED is set — skipping this run (no probes, no D1 writes).");
+  process.exit(0);
+}
 const d1Config = ["CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_D1_DATABASE_ID", "CLOUDFLARE_API_TOKEN"].every(
   (k) => env[k]
 )

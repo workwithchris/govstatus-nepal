@@ -67,7 +67,7 @@ export default async function Image({
             live status
           </div>
           <div style={{ fontSize: 30, color: "#a1a1aa", marginTop: 24 }}>
-            {`${count} Nepal government services, checked from Nepal`}
+            {`${count} Nepal government services, measured live`}
           </div>
         </div>
 

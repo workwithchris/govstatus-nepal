@@ -35,3 +35,31 @@ export function pageMetadata({
     },
   };
 }
+
+/** Schema.org BreadcrumbList for a page at `path` (includes the home crumb). */
+export function breadcrumbJsonLd({
+  name,
+  path,
+}: {
+  name: string;
+  path: string;
+}): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Dashboard",
+        item: SITE_URL,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name,
+        item: `${SITE_URL}${path}`,
+      },
+    ],
+  };
+}
