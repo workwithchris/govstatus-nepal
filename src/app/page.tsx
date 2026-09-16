@@ -1,25 +1,18 @@
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
-
 import {
   CategoryFilters,
   MetricsOverview,
   SearchAndSortBar,
   ServicesView,
 } from "@/features/services-monitor";
-import { SERVICES_HEALTH_QUERY_KEY } from "@/features/services-monitor/api/useServicesHealth";
 import { ProvenanceBanner } from "@/features/services-monitor/components/ProvenanceBanner";
 import { SimulatedDataNotice } from "@/features/services-monitor/components/SimulatedDataNotice";
 import { StatusLegend } from "@/features/services-monitor/components/StatusLegend";
 import { CATEGORY_LABELS } from "@/features/services-monitor/components/status-meta";
-import { getInitialStaticHealth } from "@/features/services-monitor/lib/client-probe";
 import { serviceCategorySchema } from "@/features/services-monitor/types";
-import { getQueryClient } from "@/lib/query-client";
 import { SITE_URL, STATUS_PAGES_ENABLED } from "@/lib/site";
 import seedData from "@/data/seed-services.json";
 
 export default function DashboardPage() {
-  const queryClient = getQueryClient();
-  queryClient.setQueryData(SERVICES_HEALTH_QUERY_KEY, getInitialStaticHealth());
 
   const byCategory = seedData.reduce<Record<string, typeof seedData>>(
     (acc, s) => {
@@ -60,8 +53,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
-      <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:py-14">
+    <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:py-14">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -150,6 +142,5 @@ export default function DashboardPage() {
         </div>
       </section>
     </main>
-  </HydrationBoundary>
-);
+  );
 }

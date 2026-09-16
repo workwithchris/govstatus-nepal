@@ -24,11 +24,10 @@ export function useServicesHealth() {
   return useQuery<SlimHealthResponse>({
     queryKey: SERVICES_HEALTH_QUERY_KEY,
     queryFn: () => probeAllServicesClientSide(),
-    initialData: getInitialStaticHealth(),
-    staleTime: 2 * 60 * 1000,
+    placeholderData: getInitialStaticHealth(),
+    staleTime: 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    placeholderData: keepPreviousData,
   });
 }
 
