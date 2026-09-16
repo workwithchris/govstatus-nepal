@@ -2,10 +2,7 @@
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import {
-  getInitialStaticHealth,
-  probeAllServicesClientSide,
-} from "@/features/services-monitor/lib/client-probe";
+import { probeAllServicesClientSide } from "@/features/services-monitor/lib/client-probe";
 import type {
   HealthResponse,
   SlimHealthResponse,
@@ -17,16 +14,23 @@ export const SERVICES_FULL_HEALTH_QUERY_KEY = [
   "full",
 ] as const;
 
+async function fetchSlimHealth(): Promise<SlimHealthResponse> {
+  const res = await fetch("/api/health?slim=1");
+  if (!res.ok) {
+    throw new Error(`Health probe failed: ${res.status}`);
+  }
+  return res.json();
+}
+
 /**
- * Dashboard data: live client-side browser probe running directly from the user's connection.
+ * Dashboard data: fetch live health metrics from server with 60s stale-while-revalidate cache.
  */
 export function useServicesHealth() {
   return useQuery<SlimHealthResponse>({
     queryKey: SERVICES_HEALTH_QUERY_KEY,
-    queryFn: () => probeAllServicesClientSide(),
-    placeholderData: getInitialStaticHealth(),
+    queryFn: fetchSlimHealth,
     staleTime: 60 * 1000,
-    refetchInterval: 5 * 60 * 1000,
+    refetchInterval: 2 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 }
