@@ -1,8 +1,4 @@
-import { getServicesHealth } from "@/features/services-monitor/server/health-probe";
-import type {
-  HealthResponse,
-  SlimServiceHealth,
-} from "@/features/services-monitor/types";
+import { getServicesHealth, toSlim } from "@/features/services-monitor/server/health-probe";
 
 // Serve the persisted snapshot with a short cache TTL. The Worker is
 // serve-only (never probes); data freshness follows the probe cadence.
@@ -12,25 +8,6 @@ export const dynamic = "force-dynamic";
 export const revalidate = 60;
 
 export const runtime = "nodejs";
-
-/**
- * Drop the compact 24h `history` + `latencies` arrays for the dashboard, which
- * no longer renders them. Compare/Analytics/embed request the full payload
- * (no `?slim=1`). Cuts the JSON size and the client-side Zod parse work.
- */
-function toSlim(payload: HealthResponse): Omit<HealthResponse, "services"> & {
-  services: SlimServiceHealth[];
-} {
-  return {
-    ...payload,
-    services: payload.services.map((service) => {
-      const rest = { ...service } as Partial<typeof service>;
-      delete rest.history;
-      delete rest.latencies;
-      return rest as SlimServiceHealth;
-    }),
-  };
-}
 
 export async function GET(request: Request) {
   const slim = new URL(request.url).searchParams.get("slim") === "1";

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { ExternalLink } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +16,7 @@ interface ServiceCardProps {
   service: SlimServiceHealth;
 }
 
-export function ServiceCard({ service }: ServiceCardProps) {
+export const ServiceCard = memo(function ServiceCard({ service }: ServiceCardProps) {
   const { t } = useLang();
   const meta = STATUS_META[service.status];
   const StatusIcon = meta.icon;
@@ -37,7 +38,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
           select();
         }
       }}
-      className="cursor-pointer gap-0 p-0 transition-shadow hover:shadow-[0_1px_1px_rgba(0,0,0,0.04),0_8px_16px_-4px_rgba(0,0,0,0.08)] focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+      className="cursor-pointer gap-0 p-0 transition-shadow hover:shadow-[0_1px_1px_rgba(0,0,0,0.04),0_8px_16px_-4px_rgba(0,0,0,0.08)] focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none [content-visibility:auto] [contain-intrinsic-size:1px_180px]"
     >
       <div className="flex-1 p-4 pb-3 sm:p-6 sm:pb-4">
         <div className="flex items-start gap-3">
@@ -85,4 +86,4 @@ export function ServiceCard({ service }: ServiceCardProps) {
       </div>
     </Card>
   );
-}
+});

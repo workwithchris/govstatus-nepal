@@ -3,27 +3,13 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import {
-  healthResponseSchema,
-  slimHealthResponseSchema,
-  type HealthResponse,
-  type SlimHealthResponse,
+  getInitialStaticHealth,
+  probeAllServicesClientSide,
+} from "@/features/services-monitor/lib/client-probe";
+import type {
+  HealthResponse,
+  SlimHealthResponse,
 } from "@/features/services-monitor/types";
-
-async function fetchSlimHealth(): Promise<SlimHealthResponse> {
-  const res = await fetch("/api/health?slim=1");
-  if (!res.ok) {
-    throw new Error(`Health probe failed: ${res.status}`);
-  }
-  return slimHealthResponseSchema.parse(await res.json());
-}
-
-async function fetchFullHealth(): Promise<HealthResponse> {
-  const res = await fetch("/api/health");
-  if (!res.ok) {
-    throw new Error(`Health probe failed: ${res.status}`);
-  }
-  return healthResponseSchema.parse(await res.json());
-}
 
 export const SERVICES_HEALTH_QUERY_KEY = ["services-health"] as const;
 export const SERVICES_FULL_HEALTH_QUERY_KEY = [
@@ -32,29 +18,37 @@ export const SERVICES_FULL_HEALTH_QUERY_KEY = [
 ] as const;
 
 /**
- * Dashboard data: slim payload (no 24h history/latencies). The snapshot only
- * changes every probe cycle, so a 5-minute stale/refetch window is plenty and
- * window-focus refetches are disabled to avoid redundant round trips.
+ * Dashboard data: live client-side browser probe running directly from the user's connection.
  */
 export function useServicesHealth() {
-  return useQuery({
+  return useQuery<SlimHealthResponse>({
     queryKey: SERVICES_HEALTH_QUERY_KEY,
-    queryFn: fetchSlimHealth,
-    staleTime: 5 * 60 * 1000,
+    queryFn: () => probeAllServicesClientSide(),
+    initialData: getInitialStaticHealth(),
+    staleTime: 2 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    // Keep the last-known list on screen during background refetches so the
-    // view never blanks out or flashes a loader while a probe is running.
     placeholderData: keepPreviousData,
   });
 }
 
 /** Full payload (with 24h history/latencies) for Compare and Analytics. */
 export function useServicesFullHealth() {
-  return useQuery({
+  return useQuery<HealthResponse>({
     queryKey: SERVICES_FULL_HEALTH_QUERY_KEY,
-    queryFn: fetchFullHealth,
-    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const slim = await probeAllServicesClientSide();
+      const services = slim.services.map((s) => ({
+        ...s,
+        history: "o".repeat(24),
+        latencies: Array(24).fill(s.responseTime),
+      }));
+      return {
+        ...slim,
+        services,
+      };
+    },
+    staleTime: 2 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     placeholderData: keepPreviousData,

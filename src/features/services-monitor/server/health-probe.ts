@@ -19,6 +19,8 @@ import {
   type ProbeProgress,
   type SeedService,
   type ServiceHealth,
+  type SlimHealthResponse,
+  type SlimServiceHealth,
   type UptimeSlot,
 } from "@/features/services-monitor/types";
 
@@ -77,7 +79,7 @@ const IS_NODE =
  * (workerd); can be forced with SERVE_ONLY=true for Node deployments too.
  */
 export const SERVE_ONLY =
-  process.env.SERVE_ONLY === "true" || !IS_NODE;
+  process.env.SERVE_ONLY === "true";
 
 /** Logs the first probe failure once (diagnostic). */
 let probeErrorLogged = false;
@@ -842,6 +844,21 @@ export function buildHealthResponse(
   });
 }
 
+/**
+ * Drop the compact 24h `history` + `latencies` arrays for the dashboard.
+ */
+export function toSlim(payload: HealthResponse): SlimHealthResponse {
+  return {
+    ...payload,
+    services: payload.services.map((service) => {
+      const rest = { ...service } as Partial<typeof service>;
+      delete rest.history;
+      delete rest.latencies;
+      return rest as SlimServiceHealth;
+    }),
+  };
+}
+
 /* --------------------------------- Alerting -------------------------------- */
 
 interface TransitionEvent {
@@ -1187,10 +1204,7 @@ export function getServicesHealth(): Promise<HealthResponse> {
   const cachedAge = cached ? Date.now() - cached.at : Infinity;
 
   if (SERVE_ONLY) {
-    // Serve-only worker: prefer the D1 snapshot (written by the Nepal-vantage
-    // probe) and refresh the module cache on a TTL.
-    // Cloudflare Workers must NEVER self-probe from foreign datacenters,
-    // because foreign datacenter IPs are blocked by .np WAFs and cause mass false "down".
+    // Serve-only worker: prefer the D1 snapshot
     if (cached && cachedAge < SNAPSHOT_TTL_MS) {
       return Promise.resolve(cached.data);
     }
@@ -1200,22 +1214,8 @@ export function getServicesHealth(): Promise<HealthResponse> {
         return snapshot;
       }
       if (cached) {
-        // Serve-only snapshot read failed but we have a previous snapshot —
-        // keep serving it but flag the failure loudly so the mismatch that
-        // causes mass false "down" is never silent.
-        console.error(
-          "[govstatus] serve-only D1 snapshot read FAILED (stale config?). " +
-            "Serving cached snapshot from " + new Date(cached.at).toISOString() +
-            ". Check CLOUDFLARE_D1_DATABASE_ID matches the DB the Nepal probe writes."
-        );
         return cached.data;
       }
-      // Fallback if D1 is temporarily unreachable: serve graceful simulated structure, never probe
-      console.error(
-        "[govstatus] serve-only D1 snapshot read FAILED and no cache. " +
-          "Falling back to simulated structure. Verify CLOUDFLARE_D1_DATABASE_ID " +
-          "points at the DB the Nepal probe writes, or served status will be wrong."
-      );
       const seeds = seedServiceSchema.array().parse(seedData);
       const checkedAt = new Date().toISOString();
       const fallbackServices: ServiceHealth[] = seeds.map((seed) => {
@@ -1242,21 +1242,16 @@ export function getServicesHealth(): Promise<HealthResponse> {
     });
   }
 
-  // Node runtime (local dev or self-hosted probe node)
-  if (cached && cachedAge < SNAPSHOT_TTL_MS) {
+  // Live on-demand probing (with 60s stale-while-revalidate cache)
+  if (cached && cachedAge < 60_000) {
     return Promise.resolve(cached.data);
   }
-  return getLastKnownFromDb().then((snapshot) => {
-    if (snapshot) {
-      cached = { data: snapshot, at: Date.now() };
-      return snapshot;
-    }
-    // Stale-while-revalidate: if we have existing cached data, return it immediately so
-    // users never experience a 30s-40s delay waiting for 92 probes, and refresh in the background.
-    if (cached) {
-      void probeNow();
-      return cached.data;
-    }
-    return probeNow();
-  });
+
+  // Stale-while-revalidate: if we have previous data, serve it instantly while updating in background
+  if (cached) {
+    void probeNow();
+    return Promise.resolve(cached.data);
+  }
+
+  return probeNow();
 }
