@@ -79,7 +79,7 @@ const IS_NODE =
  * (workerd); can be forced with SERVE_ONLY=true for Node deployments too.
  */
 export const SERVE_ONLY =
-  process.env.SERVE_ONLY === "true";
+  !IS_NODE || process.env.SERVE_ONLY === "true";
 
 /** Logs the first probe failure once (diagnostic). */
 let probeErrorLogged = false;
@@ -1148,16 +1148,28 @@ async function getLastKnownFromDb(): Promise<HealthResponse | null> {
       const metaRow = meta.get(seed.id);
       const status: HealthStatus = metaRow?.last_status ?? "operational";
       const byHour = history.get(seed.id) ?? new Map();
+
+      // Extract the most recent latency recorded in D1 for this service
+      let responseTime: number | null = null;
+      if (byHour.size > 0) {
+        const sortedBuckets = Array.from(byHour.values()).sort(
+          (a, b) => b.bucket_ms - a.bucket_ms
+        );
+        responseTime = sortedBuckets[0]
+          ? bucketLatency(sortedBuckets[0])
+          : null;
+      }
+
       const uptime24h = buildHistory(
         seed,
-        { status, responseTime: null, httpStatus: null },
+        { status, responseTime, httpStatus: null },
         checkedAt,
         byHour
       );
       services.push({
         ...seed,
         status,
-        responseTime: null,
+        responseTime,
         httpStatus: null,
         checkedAt: metaRow
           ? new Date(metaRow.last_checked_at_ms).toISOString()
@@ -1200,58 +1212,61 @@ export function probeNow(): Promise<HealthResponse> {
  * refreshing is owned by the cron job. The blocking fallback fires only when
  * the database is genuinely empty (first run before any cron tick).
  */
-export function getServicesHealth(): Promise<HealthResponse> {
+export async function getServicesHealth(): Promise<HealthResponse> {
   const cachedAge = cached ? Date.now() - cached.at : Infinity;
 
-  if (SERVE_ONLY) {
-    // Serve-only worker: prefer the D1 snapshot
-    if (cached && cachedAge < SNAPSHOT_TTL_MS) {
-      return Promise.resolve(cached.data);
+  // 1. If we have fresh cached data, serve immediately
+  const ttl = SERVE_ONLY ? SNAPSHOT_TTL_MS : 60_000;
+  if (cached && cachedAge < ttl) {
+    return cached.data;
+  }
+
+  // 2. If D1 is available, fetch the latest snapshot
+  const d1Available = !!d1Config || (await isD1Available());
+  if (d1Available) {
+    const snapshot = await getLastKnownFromDb();
+    if (snapshot) {
+      cached = { data: snapshot, at: Date.now() };
+      return snapshot;
     }
-    return getLastKnownFromDb().then((snapshot) => {
-      if (snapshot) {
-        cached = { data: snapshot, at: Date.now() };
-        return snapshot;
-      }
-      if (cached) {
-        return cached.data;
-      }
-      const seeds = seedServiceSchema.array().parse(seedData);
-      const checkedAt = new Date().toISOString();
-      const fallbackServices: ServiceHealth[] = seeds.map((seed) => {
-        const uptime24h = buildHistory(
-          seed,
-          { status: "operational", responseTime: null, httpStatus: null },
-          checkedAt,
-          new Map()
-        );
-        return {
-          ...seed,
-          status: "operational",
-          responseTime: null,
-          httpStatus: null,
-          checkedAt,
-          uptimePercentage: computeUptimePercentage(uptime24h),
-          certExpiresAt: null,
-          ...encodeHistory(uptime24h),
-        };
-      });
-      const fallback = buildHealthResponse(fallbackServices, checkedAt, "simulated");
-      cached = { data: fallback, at: Date.now() };
-      return fallback;
-    });
   }
 
-  // Live on-demand probing (with 60s stale-while-revalidate cache)
-  if (cached && cachedAge < 60_000) {
-    return Promise.resolve(cached.data);
-  }
-
-  // Stale-while-revalidate: if we have previous data, serve it instantly while updating in background
+  // 3. Stale cache fallback if available
   if (cached) {
-    void probeNow();
-    return Promise.resolve(cached.data);
+    return cached.data;
   }
 
+  // 4. If SERVE_ONLY or on workerd, serve fallback simulated response
+  if (SERVE_ONLY || !IS_NODE) {
+    const seeds = seedServiceSchema.array().parse(seedData);
+    const checkedAt = new Date().toISOString();
+    const fallbackServices: ServiceHealth[] = seeds.map((seed) => {
+      const uptime24h = buildHistory(
+        seed,
+        { status: "operational", responseTime: null, httpStatus: null },
+        checkedAt,
+        new Map()
+      );
+      return {
+        ...seed,
+        status: "operational",
+        responseTime: null,
+        httpStatus: null,
+        checkedAt,
+        uptimePercentage: computeUptimePercentage(uptime24h),
+        certExpiresAt: null,
+        ...encodeHistory(uptime24h),
+      };
+    });
+    const fallback = buildHealthResponse(
+      fallbackServices,
+      checkedAt,
+      "simulated"
+    );
+    cached = { data: fallback, at: Date.now() };
+    return fallback;
+  }
+
+  // 5. Node with no D1: run live probe
   return probeNow();
 }

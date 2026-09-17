@@ -178,7 +178,9 @@ export function ProbeLoader({ variant = "page" }: ProbeLoaderProps) {
           <RecentChecks recent={progress.recent} />
         ) : (
           <p className="animate-pulse text-sm text-muted-foreground">
-            Waiting for the first portals to respond…
+            {progress.phase === "done"
+              ? "Loading dashboard…"
+              : "Waiting for the first portals to respond…"}
           </p>
         )}
       </div>

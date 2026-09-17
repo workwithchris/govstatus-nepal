@@ -13,7 +13,7 @@
     "global_fetch_strictly_public"
   ],
   "vars": {
-    "SERVE_ONLY": "false",
+    "SERVE_ONLY": "true",
     "CLOUDFLARE_ACCOUNT_ID": "5fb3b65316e965c72c3faf3eaf92fbcc",
     "CLOUDFLARE_D1_DATABASE_ID": "a6dd3e8d-b2ed-4952-8115-877cc1209d3a"
   },
